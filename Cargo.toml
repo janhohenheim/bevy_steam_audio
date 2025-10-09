@@ -1,0 +1,46 @@
+[package]
+name = "bevy_steam_audio"
+description = "Integration between bevy_seedling and Steam Audio over audionimbus"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jan Hohenheim <jan@hohenheim.ch>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/janhohenheim/bevy_steam_audio"
+readme = "README.md"
+
+[dependencies]
+audionimbus = { version = "0.8.3", path = "../audionimbus/audionimbus", features = ["firewheel"], default-features = false }
+audionimbus-sys = { version = "4.7.1-rc.1", path = "../audionimbus/audionimbus-sys", default-features = false }
+
+bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0", default-features = false }
+bevy_app = { version = "0.17.0-rc.1", default-features = false }
+bevy_ecs = { version = "0.17.0-rc.1", default-features = false }
+bevy_transform = { version = "0.17.0-rc.1", default-features = false }
+bevy_math = { version = "0.17.0-rc.1", default-features = false }
+bevy_utils = { version = "0.17.0-rc.1", default-features = false }
+bevy_log = { version = "0.17.0-rc.1", default-features = false }
+bevy_derive = { version = "0.17.0-rc.1", default-features = false }
+
+itertools = "0.14.0"
+firewheel = { version = "0.8.0-rc.1", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+bevy = { version = "0.17.0-rc.1" }
+
+[features]
+direct = []
+reverb = []
+
+[lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[profile.dev.package."*"]
+inherits = "dev"
+opt-level = 3
+
+[profile.dev]
+opt-level = 0
+
+[patch.crates-io]
+firewheel = { git = "https://github.com/corvusprudens/firewheel", branch = "freeverb" }
