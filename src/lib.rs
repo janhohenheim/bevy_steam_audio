@@ -2,9 +2,11 @@ use std::marker::PhantomData;
 
 use prelude::*;
 
-mod audio;
 mod backend;
+mod decoder;
+mod encoder;
 pub mod mesh_backend;
+mod simulation;
 mod wrapper;
 
 pub use wrapper::*;
@@ -35,7 +37,7 @@ impl Default for SteamAudioPlugin {
 
 impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(audio::plugin);
+        app.add_plugins((encoder::plugin, decoder::plugin, simulation::plugin));
         app.init_resource::<SteamAudioConfig>();
     }
 }
@@ -47,3 +49,10 @@ pub struct Listener;
 #[derive(Resource, Reflect, Default, Debug)]
 #[reflect(Resource)]
 pub struct SteamAudioConfig;
+
+pub(crate) const FRAME_SIZE: u32 = 256;
+pub(crate) const AMBISONICS_ORDER: u32 = 2;
+pub(crate) const AMBISONICS_NUM_CHANNELS: u32 = (AMBISONICS_ORDER + 1).pow(2);
+pub(crate) const GAIN_FACTOR_DIRECT: f32 = 1.0;
+pub(crate) const GAIN_FACTOR_REFLECTIONS: f32 = 0.3;
+pub(crate) const GAIN_FACTOR_REVERB: f32 = 0.1;

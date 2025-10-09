@@ -27,15 +27,9 @@ impl SteamAudioApp for App {
 }
 
 /// The input passed to the navmesh backend system.
-#[derive(Debug, Clone, PartialEq, Reflect)]
+#[derive(Debug, Clone, PartialEq, Reflect, Default)]
 pub struct SceneSettings {
     pub filter: Option<HashSet<Entity>>,
-}
-
-impl Default for SceneSettings {
-    fn default() -> Self {
-        Self { filter: None }
-    }
 }
 
 #[derive(Debug, Reflect, Clone, PartialEq, Default)]
