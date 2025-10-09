@@ -1,8 +1,8 @@
 use std::{iter, marker::PhantomData};
 
 use crate::{
-    backend::{SceneSettings, SteamAudioApp as _, TriMesh},
     prelude::*,
+    scene::{SceneSettings, SteamAudioApp as _, TriMesh},
 };
 
 pub(super) fn plugin(app: &mut App) {

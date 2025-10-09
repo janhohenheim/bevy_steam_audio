@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{mesh_backend::Mesh3dBackendPlugin, prelude::*};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dBackendPlugin};
 
 mod util;
 use util::prelude::*;

@@ -2,9 +2,8 @@ use std::marker::PhantomData;
 
 use prelude::*;
 
-mod backend;
-pub mod mesh_backend;
 mod nodes;
+pub mod scene;
 mod simulation;
 mod wrapper;
 pub use audionimbus;
@@ -39,11 +38,10 @@ impl Default for SteamAudioPlugin {
 impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            backend::plugin,
-            mesh_backend::plugin,
             nodes::plugin,
             simulation::plugin,
             wrapper::plugin,
+            scene::plugin,
         ));
         app.init_resource::<SteamAudioConfig>();
     }
