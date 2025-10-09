@@ -43,7 +43,7 @@ pub(crate) fn setup_audionimbus(mut commands: Commands) {
 }
 
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
-pub(crate) struct AudionimbusPool;
+pub(crate) struct SteamAudioPool;
 
 #[derive(Event)]
 pub(crate) struct AudionimbusReady;
@@ -89,7 +89,7 @@ fn late_init(
 
     commands
         .spawn((
-            SamplerPool(AudionimbusPool),
+            SamplerPool(SteamAudioPool),
             VolumeNode::default(),
             VolumeNodeConfig {
                 channels: NonZeroChannelCount::new(AMBISONICS_NUM_CHANNELS).unwrap(),
@@ -593,7 +593,7 @@ pub(crate) struct AudionimbusSimulator(
 pub(crate) struct ListenerSource(pub(crate) audionimbus::Source);
 
 #[derive(Component, Deref, DerefMut)]
-#[require(Transform, GlobalTransform, AudionimbusPool)]
+#[require(Transform, GlobalTransform, SteamAudioPool)]
 pub(crate) struct AudionimbusSource(pub(crate) audionimbus::Source);
 
 fn prepare_seedling_data(

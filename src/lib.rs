@@ -1,6 +1,9 @@
+use std::marker::PhantomData;
+
 use prelude::*;
 
 mod audio;
+mod backend;
 mod wrapper;
 
 pub mod prelude {
@@ -9,14 +12,23 @@ pub mod prelude {
     pub(crate) use bevy_ecs::prelude::*;
     pub(crate) use bevy_log::prelude::*;
     pub(crate) use bevy_math::prelude::*;
+    pub(crate) use bevy_platform::prelude::*;
+    pub(crate) use bevy_reflect::prelude::*;
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
     pub use crate::{Listener, SteamAudioConfig, SteamAudioPlugin};
 }
 
-#[derive(Default)]
-pub struct SteamAudioPlugin;
+pub struct SteamAudioPlugin {
+    _pd: PhantomData<()>,
+}
+
+impl Default for SteamAudioPlugin {
+    fn default() -> Self {
+        Self { _pd: PhantomData }
+    }
+}
 
 impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
@@ -25,8 +37,10 @@ impl Plugin for SteamAudioPlugin {
     }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Reflect, Debug)]
+#[reflect(Component)]
 pub struct Listener;
 
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Reflect, Default, Debug)]
+#[reflect(Resource)]
 pub struct SteamAudioConfig;
