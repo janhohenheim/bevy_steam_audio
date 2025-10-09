@@ -13,7 +13,6 @@ use bevy_seedling::{
 use firewheel::{
     channel_config::ChannelConfig,
     collector::{ArcGc, OwnedGc},
-    diff::EventQueue,
     event::{NodeEventType, ProcEvents},
     node::{
         AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,

@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// You can specify the acoustic material properties of each triangle, although typically many triangles will share a common material.
 ///
 /// The acoustic material properties are specified for three frequency bands with center frequencies of 400 Hz, 2.5 KHz, and 15 KHz.
-#[derive(Debug, Reflect, Clone, PartialEq)]
+#[derive(Debug, Reflect, Clone, Copy, PartialEq)]
 pub struct SteamAudioMaterial {
     /// Fraction of sound energy absorbed at low, middle, high frequencies.
     ///

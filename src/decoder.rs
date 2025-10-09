@@ -9,7 +9,6 @@ use bevy_seedling::{
 };
 use firewheel::{
     channel_config::ChannelConfig,
-    diff::EventQueue,
     event::ProcEvents,
     node::{
         AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,

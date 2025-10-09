@@ -1,4 +1,5 @@
 use bevy_ecs::system::SystemId;
+use bevy_mesh::PrimitiveTopology;
 use bevy_platform::collections::HashSet;
 
 use crate::{material::SteamAudioMaterial, prelude::*};
@@ -59,5 +60,31 @@ impl TriMesh {
                 .map(|i| i + next_material_index),
         );
         self.materials.extend(other.materials);
+    }
+
+    pub fn from_mesh(mesh: &Mesh) -> Option<Self> {
+        if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+            return None;
+        }
+
+        let mut trimesh = TriMesh::default();
+        let position = mesh.attribute(Mesh::ATTRIBUTE_POSITION)?;
+        let float = position.as_float3()?;
+        trimesh.vertices = float.iter().map(|v| Vec3A::from(*v)).collect();
+
+        let indices: Vec<_> = mesh.indices()?.iter().collect();
+        if !indices.len().is_multiple_of(3) {
+            return None;
+        }
+        trimesh.indices = indices
+            .chunks(3)
+            .map(|indices| {
+                UVec3::from_array([indices[0] as u32, indices[1] as u32, indices[2] as u32])
+            })
+            .collect();
+        // TODO: accept vertex attributes for this?
+        trimesh.materials = vec![default(); trimesh.indices.len()];
+        trimesh.material_indices = vec![0; trimesh.indices.len()];
+        Some(trimesh)
     }
 }

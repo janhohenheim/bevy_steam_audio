@@ -13,10 +13,12 @@ pub use wrapper::*;
 
 pub mod prelude {
     pub(crate) use bevy_app::prelude::*;
+    pub(crate) use bevy_asset::prelude::*;
     pub(crate) use bevy_derive::{Deref, DerefMut};
     pub(crate) use bevy_ecs::prelude::*;
     pub(crate) use bevy_log::prelude::*;
     pub(crate) use bevy_math::prelude::*;
+    pub(crate) use bevy_mesh::prelude::*;
     pub(crate) use bevy_platform::prelude::*;
     pub(crate) use bevy_reflect::prelude::*;
     pub(crate) use bevy_transform::prelude::*;
