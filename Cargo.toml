@@ -28,9 +28,12 @@ bevy_derive = { version = "0.17.0-rc.1", default-features = false }
 bevy_platform = { version = "0.17.0-rc.1", default-features = false }
 bevy_asset = { version = "0.17.0-rc.1", default-features = false }
 bevy_mesh = { version = "0.17.0-rc.1", default-features = false }
+bevy_time = { version = "0.17.0-rc.1", default-features = false }
+bevy_tasks = { version = "0.17.0-rc.1", default-features = false }
 
 itertools = "0.14.0"
 firewheel = { version = "0.8.0-rc.1", default-features = false, features = ["std"] }
+crossbeam-channel = "0.5.15"
 
 [dev-dependencies]
 bevy = { version = "0.17.0-rc.1", default-features = false, features = [

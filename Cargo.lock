@@ -1370,8 +1370,11 @@ dependencies = [
  "bevy_platform",
  "bevy_reflect",
  "bevy_seedling",
+ "bevy_tasks",
+ "bevy_time",
  "bevy_transform",
  "bevy_utils",
+ "crossbeam-channel",
  "firewheel",
  "itertools 0.14.0",
 ]
