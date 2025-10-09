@@ -1,17 +1,12 @@
 use crate::{
     AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, Listener,
-    decoder::AmbisonicDecodeNode,
-    encoder::{AudionimbusNode, SimulationUpdate},
+    nodes::{decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode},
     prelude::*,
 };
 
 use bevy_seedling::{context::StreamStartEvent, prelude::*};
 use bevy_transform::TransformSystems;
-use firewheel::{
-    collector::{ArcGc, OwnedGc},
-    diff::EventQueue,
-    event::NodeEventType,
-};
+use firewheel::{diff::EventQueue, event::NodeEventType};
 
 use crate::wrapper::*;
 
@@ -106,17 +101,20 @@ pub(crate) struct ListenerSource(pub(crate) audionimbus::Source);
 #[require(Transform, GlobalTransform, SteamAudioPool)]
 pub(crate) struct AudionimbusSource(pub(crate) audionimbus::Source);
 
+pub(crate) struct SimulationOutputEvent(pub(crate) audionimbus::SimulationOutputs);
+
 fn prepare_seedling_data(
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
     mut ambisonic_node: Query<(&mut AudionimbusNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut AmbisonicDecodeNode>,
+    mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<AudionimbusNode>)>,
     camera: Single<&GlobalTransform, With<Listener>>,
     mut listener_source: ResMut<ListenerSource>,
     mut simulator: ResMut<AudionimbusSimulator>,
 ) -> Result {
     let camera_transform = camera.into_inner().compute_transform();
     let listener_position = camera_transform.translation;
-    let listener_orientation = audionimbus::CoordinateSystem::from_transform(camera_transform);
+    let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(camera_transform);
 
     // Listener source to simulate reverb.
     listener_source.set_inputs(
@@ -155,7 +153,7 @@ fn prepare_seedling_data(
     simulator.set_shared_inputs(
         simulation_flags,
         &audionimbus::SimulationSharedInputs {
-            listener: listener_orientation,
+            listener: listener_orientation.to_audionimbus(),
             num_rays: 2048,
             num_bounces: 8,
             duration: 2.0,
@@ -169,7 +167,8 @@ fn prepare_seedling_data(
 
     let reverb_simulation_outputs =
         listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
-    let reverb_effect_params = ArcGc::new(OwnedGc::new(
+
+    reverb_data.push(NodeEventType::custom(
         reverb_simulation_outputs.reflections().into_inner(),
     ));
 
@@ -213,12 +212,9 @@ fn prepare_seedling_data(
         let simulation_outputs = source.get_outputs(simulation_flags);
 
         let (mut node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::Custom(OwnedGc::new(Box::new(
-            SimulationUpdate {
-                outputs: Some(simulation_outputs),
-                reverb_effect_params: reverb_effect_params.clone(),
-            },
-        ))));
+        events.push(NodeEventType::custom(SimulationOutputEvent(
+            simulation_outputs,
+        )));
         node.source_position = source_position;
         node.listener_position = listener_position;
     }

@@ -2,7 +2,8 @@ use std::num::NonZeroU32;
 
 use crate::{
     AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, GAIN_FACTOR_DIRECT,
-    GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB, prelude::*,
+    GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB, nodes::reverb::SharedReverbData, prelude::*,
+    simulation::SimulationOutputEvent,
 };
 
 use bevy_seedling::{
@@ -12,8 +13,7 @@ use bevy_seedling::{
 };
 use firewheel::{
     channel_config::ChannelConfig,
-    collector::{ArcGc, OwnedGc},
-    event::{NodeEventType, ProcEvents},
+    event::ProcEvents,
     node::{
         AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,
         ProcBuffers, ProcExtra, ProcInfo, ProcessStatus,
@@ -24,7 +24,6 @@ use itertools::izip;
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<AudionimbusNode>();
 }
-
 #[derive(Diff, Patch, Debug, Clone, Component)]
 pub(crate) struct AudionimbusNode {
     pub(crate) source_position: Vec3,
@@ -106,14 +105,8 @@ impl AudioNode for AudionimbusNode {
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,
             simulation_outputs: None,
-            reverb_effect_params: None,
         }
     }
-}
-
-pub(crate) struct SimulationUpdate {
-    pub(crate) outputs: Option<audionimbus::SimulationOutputs>,
-    pub(crate) reverb_effect_params: ArcGc<OwnedGc<audionimbus::ReflectionEffectParams>>,
 }
 
 struct AudionimbusProcessor {
@@ -127,7 +120,6 @@ struct AudionimbusProcessor {
     max_block_frames: NonZeroU32,
     started_draining: bool,
     simulation_outputs: Option<audionimbus::SimulationOutputs>,
-    reverb_effect_params: Option<ArcGc<OwnedGc<audionimbus::ReflectionEffectParams>>>,
 }
 
 impl AudioNodeProcessor for AudionimbusProcessor {
@@ -136,19 +128,14 @@ impl AudioNodeProcessor for AudionimbusProcessor {
         proc_info: &ProcInfo,
         ProcBuffers { inputs, outputs }: ProcBuffers,
         events: &mut ProcEvents,
-        _: &mut ProcExtra,
+        extra: &mut ProcExtra,
     ) -> ProcessStatus {
-        for event in events.drain() {
+        for mut event in events.drain() {
             if let Some(patch) = AudionimbusNode::patch_event(&event) {
                 self.params.apply(patch);
             }
-            if let NodeEventType::Custom(mut event) = event
-                && let Some(update) = event.get_mut().downcast_mut::<SimulationUpdate>()
-            {
-                if let Some(outputs) = update.outputs.take() {
-                    self.simulation_outputs = Some(outputs);
-                }
-                self.reverb_effect_params = Some(update.reverb_effect_params.clone());
+            if let Some(update) = event.downcast::<SimulationOutputEvent>() {
+                self.simulation_outputs = Some(update.0);
             }
         }
 
@@ -161,9 +148,9 @@ impl AudioNodeProcessor for AudionimbusProcessor {
             }
             // Buffer full, let's work!
 
-            let (Some(simulation_outputs), Some(reverb_effect_params)) = (
+            let (Some(simulation_outputs), Some(SharedReverbData(reverb_effect_params))) = (
                 self.simulation_outputs.as_ref(),
-                self.reverb_effect_params.as_ref(),
+                extra.store.try_get::<SharedReverbData>(),
             ) else {
                 self.input_buffer.clear();
                 return ProcessStatus::ClearAllOutputs;

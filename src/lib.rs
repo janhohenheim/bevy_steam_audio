@@ -3,13 +3,12 @@ use std::marker::PhantomData;
 use prelude::*;
 
 mod backend;
-mod decoder;
-mod encoder;
 pub mod mesh_backend;
+mod nodes;
 mod simulation;
 mod wrapper;
-
-pub use wrapper::*;
+pub use audionimbus;
+pub use audionimbus::Material as SteamAudioMaterial;
 
 pub mod prelude {
     pub(crate) use bevy_app::prelude::*;
@@ -24,7 +23,7 @@ pub mod prelude {
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
-    pub use crate::{Listener, SteamAudioConfig, SteamAudioPlugin, material::SteamAudioMaterial};
+    pub use crate::{Listener, SteamAudioConfig, SteamAudioMaterial, SteamAudioPlugin};
 }
 
 pub struct SteamAudioPlugin {
@@ -39,7 +38,13 @@ impl Default for SteamAudioPlugin {
 
 impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((encoder::plugin, decoder::plugin, simulation::plugin));
+        app.add_plugins((
+            backend::plugin,
+            mesh_backend::plugin,
+            nodes::plugin,
+            simulation::plugin,
+            wrapper::plugin,
+        ));
         app.init_resource::<SteamAudioConfig>();
     }
 }

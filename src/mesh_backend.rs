@@ -5,6 +5,10 @@ use crate::{
     prelude::*,
 };
 
+pub(super) fn plugin(app: &mut App) {
+    let _ = app;
+}
+
 pub struct Mesh3dBackendPlugin {
     _pd: PhantomData<()>,
 }
@@ -21,8 +25,7 @@ impl Plugin for Mesh3dBackendPlugin {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy, Deref, DerefMut, PartialEq, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Debug, Clone, Copy, Deref, DerefMut, PartialEq)]
 pub struct MeshSteamAudioMaterial(pub SteamAudioMaterial);
 
 fn build_scene(

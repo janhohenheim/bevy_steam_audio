@@ -1,6 +1,9 @@
 use std::num::NonZeroU32;
 
-use crate::{AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, prelude::*};
+use crate::{
+    AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, prelude::*,
+    wrapper::AudionimbusCoordinateSystem,
+};
 
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
@@ -22,7 +25,7 @@ pub(super) fn plugin(app: &mut App) {
 
 #[derive(Diff, Patch, Debug, Clone, Component)]
 pub(crate) struct AmbisonicDecodeNode {
-    pub(crate) listener_orientation: audionimbus::CoordinateSystem,
+    pub(crate) listener_orientation: AudionimbusCoordinateSystem,
     #[diff(skip)]
     pub(crate) context: audionimbus::Context,
 }
@@ -159,7 +162,7 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: AMBISONICS_ORDER,
                 hrtf: &self.hrtf,
-                orientation: self.params.listener_orientation,
+                orientation: self.params.listener_orientation.to_audionimbus(),
                 binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(

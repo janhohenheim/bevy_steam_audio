@@ -2,7 +2,11 @@ use bevy_ecs::system::SystemId;
 use bevy_mesh::PrimitiveTopology;
 use bevy_platform::collections::HashSet;
 
-use crate::{material::SteamAudioMaterial, prelude::*};
+use crate::prelude::*;
+
+pub(super) fn plugin(app: &mut App) {
+    let _ = app;
+}
 
 /// The current backend registered through [`NavmeshApp::set_steam_audio_scene_backend`]
 #[derive(Resource, Debug, Clone, Deref, DerefMut)]
@@ -33,7 +37,7 @@ pub struct SceneSettings {
     pub filter: Option<HashSet<Entity>>,
 }
 
-#[derive(Debug, Reflect, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriMesh {
     pub vertices: Vec<Vec3A>,
     pub indices: Vec<UVec3>,
