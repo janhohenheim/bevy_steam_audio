@@ -4,7 +4,10 @@ use prelude::*;
 
 mod audio;
 mod backend;
+pub mod mesh_backend;
 mod wrapper;
+
+pub use wrapper::*;
 
 pub mod prelude {
     pub(crate) use bevy_app::prelude::*;
@@ -17,7 +20,7 @@ pub mod prelude {
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
-    pub use crate::{Listener, SteamAudioConfig, SteamAudioPlugin};
+    pub use crate::{Listener, SteamAudioConfig, SteamAudioPlugin, material::SteamAudioMaterial};
 }
 
 pub struct SteamAudioPlugin {

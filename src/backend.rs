@@ -1,18 +1,14 @@
 use bevy_ecs::system::SystemId;
 use bevy_platform::collections::HashSet;
 
-use crate::prelude::*;
+use crate::{material::SteamAudioMaterial, prelude::*};
 
-/// The current backend registered through [`NavmeshApp::set_navmesh_backend`]
+/// The current backend registered through [`NavmeshApp::set_steam_audio_scene_backend`]
 #[derive(Resource, Debug, Clone, Deref, DerefMut)]
 pub struct SteamAudioSceneBackend(pub SystemId<In<SceneSettings>, TriMesh>);
 
-/// Extension used to implement [`NavmeshApp::set_navmesh_backend`] on [`App`]
+/// Extension used to implement [`SteamAudioApp::set_steam_audio_scene_backend`] on [`App`]
 pub trait SteamAudioApp {
-    /// Set the backend for generating navmesh obstacles. Only one backend can be set at a time.
-    /// Setting a backend will replace any existing backend. By default, no backend is set.
-    ///
-    /// The backend is supposed to return a single [`TriMesh`] containing the geometry for all obstacles in the scene in global units.
     fn set_steam_audio_scene_backend<M>(
         &mut self,
         system: impl IntoSystem<In<SceneSettings>, TriMesh, M> + 'static,
@@ -42,19 +38,12 @@ impl Default for SceneSettings {
     }
 }
 
-/// A mesh used as input for [`Heightfield`](crate::Heightfield) rasterization.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Reflect, Clone, PartialEq, Default)]
 pub struct TriMesh {
-    /// The vertices composing the collider.
-    /// Follows the convention of a triangle list.
     pub vertices: Vec<Vec3A>,
-
-    /// The indices composing the collider.
-    /// Follows the convention of a triangle list.
     pub indices: Vec<UVec3>,
-
-    material_indices: Vec<u32>,
-    materials: Vec<audionimbus::Material>,
+    pub material_indices: Vec<u32>,
+    pub materials: Vec<SteamAudioMaterial>,
 }
 
 impl TriMesh {

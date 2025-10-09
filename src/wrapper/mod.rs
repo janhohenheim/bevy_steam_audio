@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+pub mod material;
+
 pub(crate) trait AudionimbusCoordinateSystemFromTransform {
     fn from_transform(transform: Transform) -> audionimbus::CoordinateSystem;
 }
