@@ -9,7 +9,7 @@ use std::{
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        SteamAudioPool, decoder::AmbisonicDecodeNode, encoder::AudionimbusNode,
+        SteamAudioPool, decoder::AmbisonicDecodeNode, encoder::SteamAudioNode,
         reverb::ReverbDataNode,
     },
     prelude::*,
@@ -69,6 +69,9 @@ fn create_simulator_on_settings_change(
     simulator: Res<AudionimbusSimulator>,
     mut commands: Commands,
 ) {
+    if quality.is_added() {
+        return;
+    }
     if quality.is_changed() {
         commands.trigger(CreateSimulator {
             sampling_rate: simulator.sampling_rate,
@@ -172,20 +175,22 @@ fn create_simulator(
     let simulation_complete = Arc::new(AtomicBool::new(false));
     let simulation_complete_inner = simulation_complete.clone();
     let (tx, rx) = crossbeam_channel::unbounded::<()>();
-    let future = async move {
-        loop {
-            rx.recv().unwrap();
-            simulator.read().unwrap().run_reflections();
-            simulation_complete_inner.store(true, Ordering::Relaxed);
-        }
-    };
-
-    AsyncComputeTaskPool::get().spawn(future).detach();
-
     commands.insert_resource(AsyncSimulationSynchronization {
         sender: tx,
         complete: simulation_complete,
     });
+
+    let future = async move {
+        loop {
+            if rx.recv().is_err() {
+                // tx dropped because we created a new simulation
+                break;
+            }
+            simulator.read().unwrap().run_reflections();
+            simulation_complete_inner.store(true, Ordering::Relaxed);
+        }
+    };
+    AsyncComputeTaskPool::get().spawn(future).detach();
 
     commands.trigger(SimulatorReady);
     Ok(())
@@ -221,9 +226,9 @@ pub(crate) struct SimulationOutputEvent(pub(crate) audionimbus::SimulationOutput
 
 fn prepare_seedling_data(
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
-    mut ambisonic_node: Query<(&mut AudionimbusNode, &mut AudioEvents)>,
+    mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut AmbisonicDecodeNode>,
-    mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<AudionimbusNode>)>,
+    mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
     listener: Single<&GlobalTransform, With<SteamAudioListener>>,
     mut listener_source: ResMut<ListenerSource>,
 ) -> Result {

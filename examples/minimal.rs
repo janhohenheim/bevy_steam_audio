@@ -31,6 +31,12 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
         CameraController::default(),
     ));
     commands.spawn((
+        SamplePlayer::new(assets.load("selfless_courage.ogg")),
+        SteamAudioPool,
+        Transform::from_xyz(0.0, 1.0, 0.0),
+        PointLight::default(),
+    ));
+    commands.spawn((
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, 0.3), Vec3::Y),
     ));

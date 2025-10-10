@@ -27,7 +27,9 @@ pub mod prelude {
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
-    pub use crate::{SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin};
+    pub use crate::{
+        SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, nodes::SteamAudioPool,
+    };
 }
 
 pub struct SteamAudioPlugin {

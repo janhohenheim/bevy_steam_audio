@@ -10,6 +10,8 @@ pub use encoder::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_nodes);
     app.add_plugins((decoder::plugin, encoder::plugin, reverb::plugin));
+    app.register_required_components::<SteamAudioPool, Transform>()
+        .register_required_components::<SteamAudioPool, GlobalTransform>();
 }
 
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
@@ -29,7 +31,7 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
             VolumeNodeConfig {
                 channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
             },
-            sample_effects![AudionimbusNode::default()],
+            sample_effects![SteamAudioNode::default()],
         ))
-        .chain_node(SteamAudioDecodeBus);
+        .connect(SteamAudioDecodeBus);
 }

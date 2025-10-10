@@ -281,12 +281,15 @@ impl SteamAudioSimulationSettings {
 impl Default for SteamAudioSimulationSettings {
     fn default() -> Self {
         Self {
-            enabled: todo!(),
-            num_rays: todo!(),
-            num_bounces: todo!(),
-            impulse_duration: todo!(),
-            irradiance_min_distance: todo!(),
-            reflection_and_pathing_simulation_timer: todo!(),
+            enabled: true,
+            num_rays: 4096,
+            num_bounces: 4,
+            impulse_duration: Duration::from_secs_f32(1.0),
+            irradiance_min_distance: 1.0,
+            reflection_and_pathing_simulation_timer: Some(Timer::from_seconds(
+                0.2,
+                TimerMode::Once,
+            )),
         }
     }
 }

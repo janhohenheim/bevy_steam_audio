@@ -28,11 +28,11 @@ use firewheel::{
 use itertools::izip;
 
 pub(super) fn plugin(app: &mut App) {
-    app.register_node::<AudionimbusNode>();
+    app.register_node::<SteamAudioNode>();
 }
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
-pub struct AudionimbusNode {
+pub struct SteamAudioNode {
     pub direct_gain: f32,
     pub reflection_gain: f32,
     pub reverb_gain: f32,
@@ -40,7 +40,7 @@ pub struct AudionimbusNode {
     pub(crate) listener_position: Vec3,
 }
 
-impl Default for AudionimbusNode {
+impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
             direct_gain: 1.0 / 3.0,
@@ -75,7 +75,7 @@ impl AudionimbusNodeConfig {
     }
 }
 
-impl AudioNode for AudionimbusNode {
+impl AudioNode for SteamAudioNode {
     type Configuration = AudionimbusNodeConfig;
 
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
@@ -161,7 +161,7 @@ impl AudioNode for AudionimbusNode {
 struct AudionimbusProcessor {
     order: u32,
     frame_size: u32,
-    params: AudionimbusNode,
+    params: SteamAudioNode,
     ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
     reflection_effect: audionimbus::ReflectionEffect,
@@ -190,7 +190,7 @@ impl AudioNodeProcessor for AudionimbusProcessor {
         extra: &mut ProcExtra,
     ) -> ProcessStatus {
         for mut event in events.drain() {
-            if let Some(patch) = AudionimbusNode::patch_event(&event) {
+            if let Some(patch) = SteamAudioNode::patch_event(&event) {
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(update) = event.downcast::<SimulationOutputEvent>() {
