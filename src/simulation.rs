@@ -11,6 +11,7 @@ use crate::{
     FRAME_SIZE, Listener,
     nodes::{decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode},
     prelude::*,
+    settings::{SteamAudioSettings, SteamAudioSimulatorSettings},
 };
 
 use bevy_seedling::{
@@ -65,78 +66,6 @@ pub(crate) fn setup_audionimbus(
         .chain_node(ambisonic_decode_node);
 
     commands.insert_resource(AudionimbusContext(context));
-}
-
-#[derive(Debug, Clone, PartialEq, Reflect, Resource)]
-#[reflect(Resource)]
-struct SteamAudioSettings {
-    pub enabled: bool,
-
-    /// The number of rays to trace from the listener.
-    /// Increasing this value results in more accurate reflections, at the cost of increased CPU usage.
-    pub num_rays: u32,
-
-    /// The number of times each ray traced from the listener is reflected when it encounters a solid object.
-    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during simulation.
-    pub num_bounces: u32,
-
-    /// The duration  of the impulse responses generated when simulating reflections.
-    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during audio processing.
-    pub impulse_duration: Duration,
-
-    /// When calculating how much sound energy reaches a surface directly from a source, any source that is closer than [`Self::irradiance_min_distance`] to the surface is assumed to be at a distance of [`Self::irradiance_min_distance`], for the purposes of energy calculations.
-    pub irradiance_min_distance: f32,
-
-    pub reflection_and_pathing_simulation_timer: Option<Timer>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
-#[reflect(Resource)]
-pub struct SteamAudioSimulatorSettings {
-    pub order: u32,
-}
-
-impl SteamAudioSimulatorSettings {
-    pub fn num_channels(&self) -> u32 {
-        (self.order + 1).pow(2)
-    }
-}
-
-impl Default for SteamAudioSimulatorSettings {
-    fn default() -> Self {
-        Self { order: 2 }
-    }
-}
-
-impl SteamAudioSettings {
-    pub fn to_audionimbus_simulation_shared_inputs(
-        &self,
-        listener_position: AudionimbusCoordinateSystem,
-        simulator_settings: SteamAudioSimulatorSettings,
-    ) -> audionimbus::SimulationSharedInputs {
-        audionimbus::SimulationSharedInputs {
-            num_rays: self.num_rays,
-            num_bounces: self.num_bounces,
-            duration: self.impulse_duration.as_secs_f32(),
-            irradiance_min_distance: self.irradiance_min_distance,
-            listener: listener_position.to_audionimbus(),
-            order: simulator_settings.order,
-            pathing_visualization_callback: None,
-        }
-    }
-}
-
-impl Default for SteamAudioSettings {
-    fn default() -> Self {
-        Self {
-            enabled: todo!(),
-            num_rays: todo!(),
-            num_bounces: todo!(),
-            impulse_duration: todo!(),
-            irradiance_min_distance: todo!(),
-            reflection_and_pathing_simulation_timer: todo!(),
-        }
-    }
 }
 
 #[derive(Event)]
@@ -244,9 +173,7 @@ fn create_simulator(
         create.sampling_rate.into(),
         FRAME_SIZE,
     )
-    .with_direct(audionimbus::DirectSimulationSettings {
-        max_num_occlusion_samples: 16,
-    })
+    .with_direct(settings.direct.into())
     .with_reflections(audionimbus::ReflectionsSimulationSettings::Convolution {
         max_num_rays: 2048,
         num_diffuse_samples: 8,
@@ -255,9 +182,7 @@ fn create_simulator(
         max_num_sources: 8,
         num_threads: 1,
     })
-    .with_pathing(audionimbus::PathingSimulationSettings {
-        num_visibility_samples: 32,
-    })
+    .with_pathing(settings.pathing.into())
     .try_build(&context)?;
 
     let listener_source = audionimbus::Source::try_new(

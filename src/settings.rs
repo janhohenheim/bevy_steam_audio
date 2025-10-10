@@ -1,0 +1,135 @@
+use std::time::Duration;
+
+use crate::{prelude::*, wrapper::AudionimbusCoordinateSystem};
+
+pub(super) fn plugin(app: &mut App) {
+    let _ = app;
+}
+
+#[derive(Debug, Clone, PartialEq, Reflect, Resource)]
+#[reflect(Resource)]
+pub struct SteamAudioSettings {
+    pub enabled: bool,
+
+    /// The number of rays to trace from the listener.
+    /// Increasing this value results in more accurate reflections, at the cost of increased CPU usage.
+    pub num_rays: u32,
+
+    /// The number of times each ray traced from the listener is reflected when it encounters a solid object.
+    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during simulation.
+    pub num_bounces: u32,
+
+    /// The duration  of the impulse responses generated when simulating reflections.
+    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during audio processing.
+    pub impulse_duration: Duration,
+
+    /// When calculating how much sound energy reaches a surface directly from a source, any source that is closer than [`Self::irradiance_min_distance`] to the surface is assumed to be at a distance of [`Self::irradiance_min_distance`], for the purposes of energy calculations.
+    pub irradiance_min_distance: f32,
+
+    pub reflection_and_pathing_simulation_timer: Option<Timer>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
+#[reflect(Resource)]
+pub struct SteamAudioSimulatorSettings {
+    pub order: u32,
+    pub direct: SteamAudioDirectSimulationSettings,
+    pub pathing: SteamAudioPathingSimulationSettings,
+}
+
+/// Settings used for direct path simulation.
+#[derive(Debug, Clone, Copy, PartialEq, Reflect)]
+pub struct SteamAudioDirectSimulationSettings {
+    /// The maximum number of point samples to consider when calculating occlusion using the volumetric occlusion algorithm.
+    /// Different sources can use different numbers of samples, and the number of samples can change between simulation runs, but this is the maximum value.
+    /// Increasing this value results in smoother occlusion transitions, at the cost of increased CPU usage.
+    pub max_num_occlusion_samples: u32,
+}
+
+impl From<SteamAudioDirectSimulationSettings> for audionimbus::DirectSimulationSettings {
+    fn from(settings: SteamAudioDirectSimulationSettings) -> Self {
+        Self {
+            max_num_occlusion_samples: settings.max_num_occlusion_samples,
+        }
+    }
+}
+
+impl Default for SteamAudioDirectSimulationSettings {
+    fn default() -> Self {
+        Self {
+            max_num_occlusion_samples: 16,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Reflect)]
+/// Settings used for pathing simulation.
+pub struct SteamAudioPathingSimulationSettings {
+    /// The number of point samples to consider when calculating probe-to-probe visibility for pathing simulations.
+    /// Baked paths may end up being occluded by dynamic objects, in which case you can configure the simulator to look for alternate paths in real time.
+    /// This process will involve checking visibility between probes.
+    num_visibility_samples: u32,
+}
+
+impl From<SteamAudioPathingSimulationSettings> for audionimbus::PathingSimulationSettings {
+    fn from(settings: SteamAudioPathingSimulationSettings) -> Self {
+        Self {
+            num_visibility_samples: settings.num_visibility_samples,
+        }
+    }
+}
+
+impl Default for SteamAudioPathingSimulationSettings {
+    fn default() -> Self {
+        Self {
+            num_visibility_samples: 32,
+        }
+    }
+}
+
+impl SteamAudioSimulatorSettings {
+    pub fn num_channels(&self) -> u32 {
+        (self.order + 1).pow(2)
+    }
+}
+
+impl Default for SteamAudioSimulatorSettings {
+    fn default() -> Self {
+        Self {
+            order: 2,
+            direct: default(),
+            pathing: default(),
+        }
+    }
+}
+
+impl SteamAudioSettings {
+    pub fn to_audionimbus_simulation_shared_inputs(
+        &self,
+        listener_position: AudionimbusCoordinateSystem,
+        simulator_settings: SteamAudioSimulatorSettings,
+    ) -> audionimbus::SimulationSharedInputs {
+        audionimbus::SimulationSharedInputs {
+            num_rays: self.num_rays,
+            num_bounces: self.num_bounces,
+            duration: self.impulse_duration.as_secs_f32(),
+            irradiance_min_distance: self.irradiance_min_distance,
+            listener: listener_position.to_audionimbus(),
+            order: simulator_settings.order,
+            pathing_visualization_callback: None,
+        }
+    }
+}
+
+impl Default for SteamAudioSettings {
+    fn default() -> Self {
+        Self {
+            enabled: todo!(),
+            num_rays: todo!(),
+            num_bounces: todo!(),
+            impulse_duration: todo!(),
+            irradiance_min_distance: todo!(),
+            reflection_and_pathing_simulation_timer: todo!(),
+        }
+    }
+}
