@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{prelude::*, wrapper::AudionimbusCoordinateSystem};
 
 pub(super) fn plugin(app: &mut App) {
@@ -8,54 +6,39 @@ pub(super) fn plugin(app: &mut App) {
 
 #[derive(Debug, Clone, PartialEq, Reflect, Resource)]
 #[reflect(Resource)]
-pub struct SteamAudioSettings {
+pub struct SteamAudioSimulationSettings {
     pub enabled: bool,
-
-    /// The number of rays to trace from the listener.
-    /// Increasing this value results in more accurate reflections, at the cost of increased CPU usage.
-    pub num_rays: u32,
-
-    /// The number of times each ray traced from the listener is reflected when it encounters a solid object.
-    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during simulation.
-    pub num_bounces: u32,
-
-    /// The duration  of the impulse responses generated when simulating reflections.
-    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during audio processing.
-    pub impulse_duration: Duration,
-
-    /// When calculating how much sound energy reaches a surface directly from a source, any source that is closer than [`Self::irradiance_min_distance`] to the surface is assumed to be at a distance of [`Self::irradiance_min_distance`], for the purposes of energy calculations.
-    pub irradiance_min_distance: f32,
 
     pub reflection_and_pathing_simulation_timer: Option<Timer>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
 #[reflect(Resource)]
-pub struct SteamAudioSimulatorSettings {
+pub struct SteamAudioQuality {
     pub order: u32,
-    pub direct: SteamAudioDirectSimulationSettings,
-    pub reflections: SteamAudioReflectionsSimulationSettings,
-    pub pathing: SteamAudioPathingSimulationSettings,
+    pub direct: SteamAudioDirectQuality,
+    pub reflections: SteamAudioReflectionsQuality,
+    pub pathing: SteamAudioPathingQuality,
 }
 
 /// Settings used for direct path simulation.
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
-pub struct SteamAudioDirectSimulationSettings {
+pub struct SteamAudioDirectQuality {
     /// The maximum number of point samples to consider when calculating occlusion using the volumetric occlusion algorithm.
     /// Different sources can use different numbers of samples, and the number of samples can change between simulation runs, but this is the maximum value.
     /// Increasing this value results in smoother occlusion transitions, at the cost of increased CPU usage.
     pub max_num_occlusion_samples: u32,
 }
 
-impl From<SteamAudioDirectSimulationSettings> for audionimbus::DirectSimulationSettings {
-    fn from(settings: SteamAudioDirectSimulationSettings) -> Self {
+impl From<SteamAudioDirectQuality> for audionimbus::DirectSimulationSettings {
+    fn from(settings: SteamAudioDirectQuality) -> Self {
         Self {
             max_num_occlusion_samples: settings.max_num_occlusion_samples,
         }
     }
 }
 
-impl Default for SteamAudioDirectSimulationSettings {
+impl Default for SteamAudioDirectQuality {
     fn default() -> Self {
         Self {
             max_num_occlusion_samples: 16,
@@ -65,22 +48,22 @@ impl Default for SteamAudioDirectSimulationSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
 /// Settings used for pathing simulation.
-pub struct SteamAudioPathingSimulationSettings {
+pub struct SteamAudioPathingQuality {
     /// The number of point samples to consider when calculating probe-to-probe visibility for pathing simulations.
     /// Baked paths may end up being occluded by dynamic objects, in which case you can configure the simulator to look for alternate paths in real time.
     /// This process will involve checking visibility between probes.
     num_visibility_samples: u32,
 }
 
-impl From<SteamAudioPathingSimulationSettings> for audionimbus::PathingSimulationSettings {
-    fn from(settings: SteamAudioPathingSimulationSettings) -> Self {
+impl From<SteamAudioPathingQuality> for audionimbus::PathingSimulationSettings {
+    fn from(settings: SteamAudioPathingQuality) -> Self {
         Self {
             num_visibility_samples: settings.num_visibility_samples,
         }
     }
 }
 
-impl Default for SteamAudioPathingSimulationSettings {
+impl Default for SteamAudioPathingQuality {
     fn default() -> Self {
         Self {
             num_visibility_samples: 32,
@@ -90,7 +73,7 @@ impl Default for SteamAudioPathingSimulationSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
 /// Settings used for reflections simulation.
-pub enum SteamAudioReflectionsSimulationSettings {
+pub enum SteamAudioReflectionsQuality {
     /// Multi-channel convolution reverb.
     Convolution {
         /// The maximum number of rays to trace from the listener when simulating reflections.
@@ -171,13 +154,13 @@ pub enum SteamAudioReflectionsSimulationSettings {
     },
 }
 
-impl SteamAudioReflectionsSimulationSettings {
+impl SteamAudioReflectionsQuality {
     pub(crate) fn to_audionimbus(
         self,
         order: u32,
     ) -> audionimbus::ReflectionsSimulationSettings<'static> {
         match self {
-            SteamAudioReflectionsSimulationSettings::Convolution {
+            SteamAudioReflectionsQuality::Convolution {
                 max_num_rays,
                 num_diffuse_samples,
                 max_duration,
@@ -191,7 +174,7 @@ impl SteamAudioReflectionsSimulationSettings {
                 max_num_sources,
                 num_threads,
             },
-            SteamAudioReflectionsSimulationSettings::Parametric {
+            SteamAudioReflectionsQuality::Parametric {
                 max_num_rays,
                 num_diffuse_samples,
                 max_duration,
@@ -206,7 +189,7 @@ impl SteamAudioReflectionsSimulationSettings {
                 max_num_sources,
                 num_threads,
             },
-            SteamAudioReflectionsSimulationSettings::Hybrid {
+            SteamAudioReflectionsQuality::Hybrid {
                 max_num_rays,
                 num_diffuse_samples,
                 max_duration,
@@ -225,7 +208,7 @@ impl SteamAudioReflectionsSimulationSettings {
     }
 }
 
-impl Default for SteamAudioReflectionsSimulationSettings {
+impl Default for SteamAudioReflectionsQuality {
     fn default() -> Self {
         Self::Convolution {
             max_num_rays: 2048,
@@ -242,13 +225,13 @@ pub(crate) fn order_to_num_channels(order: u32) -> u32 {
     (order + 1).pow(2)
 }
 
-impl SteamAudioSimulatorSettings {
+impl SteamAudioQuality {
     pub fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
     }
 }
 
-impl Default for SteamAudioSimulatorSettings {
+impl Default for SteamAudioQuality {
     fn default() -> Self {
         Self {
             order: 2,
@@ -259,11 +242,11 @@ impl Default for SteamAudioSimulatorSettings {
     }
 }
 
-impl SteamAudioSettings {
+impl SteamAudioSimulationSettings {
     pub fn to_audionimbus_simulation_shared_inputs(
         &self,
         listener_position: AudionimbusCoordinateSystem,
-        simulator_settings: SteamAudioSimulatorSettings,
+        simulator_settings: SteamAudioQuality,
     ) -> audionimbus::SimulationSharedInputs {
         audionimbus::SimulationSharedInputs {
             num_rays: self.num_rays,
@@ -277,7 +260,7 @@ impl SteamAudioSettings {
     }
 }
 
-impl Default for SteamAudioSettings {
+impl Default for SteamAudioSimulationSettings {
     fn default() -> Self {
         Self {
             enabled: todo!(),

@@ -10,7 +10,7 @@ use crate::{
     FRAME_SIZE, Listener,
     nodes::{decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode},
     prelude::*,
-    settings::{SteamAudioSettings, SteamAudioSimulatorSettings},
+    settings::{SteamAudioQuality, SteamAudioSimulationSettings},
 };
 
 use bevy_seedling::{
@@ -36,17 +36,14 @@ pub(super) fn plugin(app: &mut App) {
             .run_if(resource_exists::<AudionimbusSimulator>)
             .after(TransformSystems::Propagate),
     );
-    app.init_resource::<SteamAudioSettings>()
-        .init_resource::<SteamAudioSimulatorSettings>();
+    app.init_resource::<SteamAudioSimulationSettings>()
+        .init_resource::<SteamAudioQuality>();
     app.add_observer(create_simulator)
         .add_observer(create_simulator_on_stream_start)
         .add_observer(create_simulator_on_stream_restart);
 }
 
-pub(crate) fn setup_audionimbus(
-    mut commands: Commands,
-    settings: Res<SteamAudioSimulatorSettings>,
-) {
+pub(crate) fn setup_audionimbus(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     let context = audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap();
 
     let ambisonic_node = AudionimbusNode::new(context.clone());
@@ -57,7 +54,7 @@ pub(crate) fn setup_audionimbus(
             SamplerPool(SteamAudioPool),
             VolumeNode::default(),
             VolumeNodeConfig {
-                channels: NonZeroChannelCount::new(settings.num_channels()).unwrap(),
+                channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
             },
             sample_effects![ambisonic_node],
         ))
@@ -88,11 +85,11 @@ fn create_simulator_on_stream_restart(
 }
 
 fn create_simulator_on_settings_change(
-    settings: Res<SteamAudioSimulatorSettings>,
+    quality: Res<SteamAudioQuality>,
     simulator: Res<AudionimbusSimulator>,
     mut commands: Commands,
 ) {
-    if settings.is_changed() {
+    if quality.is_changed() {
         commands.trigger(CreateSimulator {
             sampling_rate: simulator.sampling_rate,
         });
@@ -102,19 +99,19 @@ fn create_simulator_on_settings_change(
 /// Inspired by the Unity Steam Audio plugin.
 fn update_simulation(
     simulator: Res<AudionimbusSimulator>,
-    simulator_settings: Res<SteamAudioSimulatorSettings>,
-    mut settings: ResMut<SteamAudioSettings>,
+    quality: Res<SteamAudioQuality>,
+    mut sim_settings: ResMut<SteamAudioSimulationSettings>,
     listener: Single<&GlobalTransform, With<Listener>>,
     synchro: ResMut<ReflectAndPathingSimulationSynchronization>,
     time: Res<Time>,
 ) -> Result {
-    if !settings.enabled {
+    if !sim_settings.enabled {
         return Ok(());
     }
     let transform = listener.compute_transform();
-    let shared_inputs = settings.to_audionimbus_simulation_shared_inputs(
+    let shared_inputs = sim_settings.to_audionimbus_simulation_shared_inputs(
         AudionimbusCoordinateSystem::from_bevy_transform(transform),
-        simulator_settings.clone(),
+        quality.clone(),
     );
 
     {
@@ -122,7 +119,10 @@ fn update_simulation(
         simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
         simulator.run_direct();
 
-        let Some(timer) = settings.reflection_and_pathing_simulation_timer.as_mut() else {
+        let Some(timer) = sim_settings
+            .reflection_and_pathing_simulation_timer
+            .as_mut()
+        else {
             return Ok(());
         };
         timer.tick(time.delta());
@@ -165,16 +165,16 @@ fn create_simulator(
     create: On<CreateSimulator>,
     mut commands: Commands,
     context: Res<AudionimbusContext>,
-    settings: Res<SteamAudioSimulatorSettings>,
+    quality: Res<SteamAudioQuality>,
 ) -> Result {
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),
         FRAME_SIZE,
     )
-    .with_direct(settings.direct.into())
-    .with_reflections(settings.reflections.to_audionimbus(settings.order))
-    .with_pathing(settings.pathing.into())
+    .with_direct(quality.direct.into())
+    .with_reflections(quality.reflections.to_audionimbus(quality.order))
+    .with_pathing(quality.pathing.into())
     .try_build(&context)?;
 
     let listener_source = audionimbus::Source::try_new(
@@ -235,6 +235,10 @@ pub struct AudionimbusSimulator {
 
 #[derive(Resource, Deref, DerefMut)]
 pub(crate) struct ListenerSource(pub(crate) audionimbus::Source);
+
+// TODO: Add an API for `SteamAudioSamplePlayer` that includes all source-related settings.
+// When that component changes, also update the configs on the nodes.
+// Do the nodes also get rebuilt when the sampling rate changes? If not, also rebuild them then.
 
 #[derive(Component, Deref, DerefMut)]
 #[require(Transform, GlobalTransform, SteamAudioPool)]
