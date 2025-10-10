@@ -1,10 +1,6 @@
-use std::{
-    sync::{
-        Arc, Mutex, RwLock,
-        atomic::{AtomicBool, Ordering},
-        mpsc,
-    },
-    time::Duration,
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 use crate::{
@@ -87,6 +83,20 @@ struct SteamAudioSettings {
     pub reflection_and_pathing_simulation_timer: Option<Timer>,
 }
 
+impl SteamAudioSettings {
+    pub fn to_audionimbus_simulation_shared_inputs(&self) -> audionimbus::SimulationSharedInputs {
+        audionimbus::SimulationSharedInputs {
+            num_rays: self.num_rays,
+            num_bounces: self.num_bounces,
+            duration: self.duration,
+            order: self.order,
+            irradiance_min_distance: self.irradiance_min_distance,
+            listener: default(),
+            pathing_visualization_callback: None,
+        }
+    }
+}
+
 impl Default for SteamAudioSettings {
     fn default() -> Self {
         Self {
@@ -115,13 +125,9 @@ fn update_simulation(
     let transform = listener.compute_transform();
     let shared_inputs = audionimbus::SimulationSharedInputs {
         listener: AudionimbusCoordinateSystem::from_bevy_transform(transform).to_audionimbus(),
-        num_rays: 2048,
-        num_bounces: 8,
-        duration: 2.0,
-        order: AMBISONICS_ORDER,
-        irradiance_min_distance: 1.0,
-        pathing_visualization_callback: None,
+        ..settings.to_audionimbus_simulation_shared_inputs()
     };
+
     simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
     simulator.run_direct();
 
@@ -185,6 +191,9 @@ fn late_init(
         max_num_sources: 8,
         num_threads: 1,
     })
+    .with_pathing(audionimbus::PathingSimulationSettings {
+        num_visibility_samples: 32,
+    })
     .try_build(&context)
     .unwrap();
     let listener_source = audionimbus::Source::try_new(
@@ -221,11 +230,11 @@ fn late_init(
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub(crate) struct AudionimbusContext(pub(crate) audionimbus::Context);
+pub struct AudionimbusContext(pub(crate) audionimbus::Context);
 
 #[derive(Resource, Deref, DerefMut)]
-pub(crate) struct AudionimbusSimulator(
-    pub(crate) audionimbus::Simulator<audionimbus::Direct, audionimbus::Reflections>,
+pub struct AudionimbusSimulator(
+    pub audionimbus::Simulator<audionimbus::Direct, audionimbus::Reflections, audionimbus::Pathing>,
 );
 
 #[derive(Resource, Deref, DerefMut)]
