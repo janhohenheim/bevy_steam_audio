@@ -1,7 +1,7 @@
 use std::{
     num::NonZeroU32,
     sync::{
-        Arc, LazyLock, RwLock,
+        Arc, RwLock,
         atomic::{AtomicBool, Ordering},
     },
 };
@@ -9,8 +9,8 @@ use std::{
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        AmbisonicDecodeNodeConfig, AudionimbusNodeConfig, SteamAudioPool,
-        decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode,
+        SteamAudioPool, decoder::AmbisonicDecodeNode, encoder::AudionimbusNode,
+        reverb::ReverbDataNode,
     },
     prelude::*,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},

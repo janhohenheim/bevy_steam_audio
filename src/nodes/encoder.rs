@@ -1,7 +1,7 @@
 use std::{iter, num::NonZeroU32};
 
 use crate::{
-    GAIN_FACTOR_DIRECT, GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB, STEAM_AUDIO_CONTEXT,
+    STEAM_AUDIO_CONTEXT,
     nodes::reverb::SharedReverbData,
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
@@ -30,11 +30,26 @@ use itertools::izip;
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<AudionimbusNode>();
 }
-#[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
+#[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct AudionimbusNode {
+    pub direct_gain: f32,
+    pub reflection_gain: f32,
+    pub reverb_gain: f32,
     pub(crate) source_position: Vec3,
     pub(crate) listener_position: Vec3,
+}
+
+impl Default for AudionimbusNode {
+    fn default() -> Self {
+        Self {
+            direct_gain: 1.0,
+            reflection_gain: 0.3,
+            reverb_gain: 0.1,
+            source_position: Vec3::ZERO,
+            listener_position: Vec3::ZERO,
+        }
+    }
 }
 
 #[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Default, Reflect)]
@@ -285,10 +300,12 @@ impl AudioNodeProcessor for AudionimbusProcessor {
                     reverb_channel.iter()
                 )
                 .map(|(direct_sample, reflections_sample, reverb_sample)| {
-                    (direct_sample * GAIN_FACTOR_DIRECT
-                        + reflections_sample * GAIN_FACTOR_REFLECTIONS
-                        + reverb_sample * GAIN_FACTOR_REVERB)
-                        / (GAIN_FACTOR_DIRECT + GAIN_FACTOR_REFLECTIONS + GAIN_FACTOR_REVERB)
+                    (direct_sample * self.params.direct_gain
+                        + reflections_sample * self.params.reflection_gain
+                        + reverb_sample * self.params.reverb_gain)
+                        / (self.params.direct_gain
+                            + self.params.reflection_gain
+                            + self.params.reverb_gain)
                 })
             })
             .enumerate()

@@ -261,7 +261,7 @@ impl Default for SteamAudioQuality {
 }
 
 impl SteamAudioSimulationSettings {
-    pub fn to_audionimbus_simulation_shared_inputs(
+    pub(crate) fn to_audionimbus_simulation_shared_inputs(
         &self,
         listener_position: AudionimbusCoordinateSystem,
         simulator_settings: SteamAudioQuality,
