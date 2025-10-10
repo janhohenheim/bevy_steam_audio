@@ -32,7 +32,7 @@ pub(super) fn plugin(app: &mut App) {
             .after(TransformSystems::Propagate),
     );
     app.init_resource::<SteamAudioSettings>();
-    app.add_observer(late_init);
+    app.add_observer(initialize_simulator);
 }
 
 pub(crate) fn setup_audionimbus(mut commands: Commands) {
@@ -169,7 +169,7 @@ struct ReflectAndPathingSimulationSynchronization {
     complete: Arc<AtomicBool>,
 }
 
-fn late_init(
+fn initialize_simulator(
     stream_start: On<StreamStartEvent>,
     mut commands: Commands,
     context: Res<AudionimbusContext>,
