@@ -1,6 +1,9 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dBackendPlugin};
+use bevy_steam_audio::{
+    prelude::*,
+    scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
+};
 
 mod util;
 use util::prelude::*;
@@ -19,7 +22,9 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, assets: Res<AssetServer>) {
-    commands.spawn(SceneRoot(assets.load("dungeon.glb#Scene0")));
+    commands
+        .spawn(SceneRoot(assets.load("dungeon.glb#Scene0")))
+        .observe(set_material);
     commands.spawn((
         Camera3d::default(),
         EnvironmentMapLight {
@@ -29,15 +34,31 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
             ..default()
         },
         CameraController::default(),
+        SteamAudioListener,
     ));
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
         SteamAudioPool,
-        Transform::from_xyz(0.0, 1.0, 0.0),
+        Transform::from_xyz(0.0, 1.0, 2.0),
         PointLight::default(),
     ));
     commands.spawn((
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, 0.3), Vec3::Y),
     ));
+}
+
+fn set_material(
+    ready: On<SceneInstanceReady>,
+    children: Query<&Children>,
+    meshes: Query<(), With<Mesh3d>>,
+    mut commands: Commands,
+) {
+    for child in children.iter_descendants(ready.entity) {
+        if meshes.contains(child) {
+            commands
+                .entity(child)
+                .insert(MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC));
+        }
+    }
 }
