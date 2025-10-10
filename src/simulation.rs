@@ -1,16 +1,22 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
+use std::{
+    num::{NonZeroU32, NonZeroU128},
+    sync::{
+        Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
 };
 
 use crate::{
-    AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, Listener,
+    FRAME_SIZE, Listener,
     nodes::{decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode},
     prelude::*,
 };
 
-use bevy_seedling::{context::StreamStartEvent, prelude::*};
-use bevy_tasks::AsyncComputeTaskPool;
+use bevy_seedling::{
+    context::{StreamRestartEvent, StreamStartEvent},
+    prelude::*,
+};
 use bevy_transform::TransformSystems;
 use firewheel::{diff::EventQueue, event::NodeEventType};
 
@@ -22,20 +28,25 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
         (
-            update_simulation.run_if(
-                resource_exists::<AudionimbusSimulator>
-                    .and(resource_exists::<ReflectAndPathingSimulationSynchronization>),
-            ),
+            create_simulator_on_settings_change,
+            update_simulation.run_if(resource_exists::<ReflectAndPathingSimulationSynchronization>),
             prepare_seedling_data,
         )
             .chain()
+            .run_if(resource_exists::<AudionimbusSimulator>)
             .after(TransformSystems::Propagate),
     );
-    app.init_resource::<SteamAudioSettings>();
-    app.add_observer(initialize_simulator);
+    app.init_resource::<SteamAudioSettings>()
+        .init_resource::<SteamAudioSimulatorSettings>();
+    app.add_observer(create_simulator)
+        .add_observer(create_simulator_on_stream_start)
+        .add_observer(create_simulator_on_stream_restart);
 }
 
-pub(crate) fn setup_audionimbus(mut commands: Commands) {
+pub(crate) fn setup_audionimbus(
+    mut commands: Commands,
+    settings: Res<SteamAudioSimulatorSettings>,
+) {
     let context = audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap();
 
     let ambisonic_node = AudionimbusNode::new(context.clone());
@@ -46,7 +57,7 @@ pub(crate) fn setup_audionimbus(mut commands: Commands) {
             SamplerPool(SteamAudioPool),
             VolumeNode::default(),
             VolumeNodeConfig {
-                channels: NonZeroChannelCount::new(AMBISONICS_NUM_CHANNELS).unwrap(),
+                channels: NonZeroChannelCount::new(settings.num_channels()).unwrap(),
             },
             sample_effects![ambisonic_node],
         ))
@@ -69,13 +80,9 @@ struct SteamAudioSettings {
     /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during simulation.
     pub num_bounces: u32,
 
-    /// The duration (in seconds) of the impulse responses generated when simulating reflections.
+    /// The duration  of the impulse responses generated when simulating reflections.
     /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during audio processing.
-    pub duration: f32,
-
-    /// The Ambisonic order of the impulse responses generated when simulating reflections.
-    /// Increasing this value results in more accurate directional variation of reflected sound, at the cost of increased CPU usage during audio processing.
-    pub order: u32,
+    pub impulse_duration: Duration,
 
     /// When calculating how much sound energy reaches a surface directly from a source, any source that is closer than [`Self::irradiance_min_distance`] to the surface is assumed to be at a distance of [`Self::irradiance_min_distance`], for the purposes of energy calculations.
     pub irradiance_min_distance: f32,
@@ -83,15 +90,37 @@ struct SteamAudioSettings {
     pub reflection_and_pathing_simulation_timer: Option<Timer>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
+#[reflect(Resource)]
+pub struct SteamAudioSimulatorSettings {
+    pub order: u32,
+}
+
+impl SteamAudioSimulatorSettings {
+    pub fn num_channels(&self) -> u32 {
+        (self.order + 1).pow(2)
+    }
+}
+
+impl Default for SteamAudioSimulatorSettings {
+    fn default() -> Self {
+        Self { order: 2 }
+    }
+}
+
 impl SteamAudioSettings {
-    pub fn to_audionimbus_simulation_shared_inputs(&self) -> audionimbus::SimulationSharedInputs {
+    pub fn to_audionimbus_simulation_shared_inputs(
+        &self,
+        listener_position: AudionimbusCoordinateSystem,
+        simulator_settings: SteamAudioSimulatorSettings,
+    ) -> audionimbus::SimulationSharedInputs {
         audionimbus::SimulationSharedInputs {
             num_rays: self.num_rays,
             num_bounces: self.num_bounces,
-            duration: self.duration,
-            order: self.order,
+            duration: self.impulse_duration.as_secs_f32(),
             irradiance_min_distance: self.irradiance_min_distance,
-            listener: default(),
+            listener: listener_position.to_audionimbus(),
+            order: simulator_settings.order,
             pathing_visualization_callback: None,
         }
     }
@@ -103,17 +132,49 @@ impl Default for SteamAudioSettings {
             enabled: todo!(),
             num_rays: todo!(),
             num_bounces: todo!(),
-            duration: todo!(),
-            order: todo!(),
+            impulse_duration: todo!(),
             irradiance_min_distance: todo!(),
             reflection_and_pathing_simulation_timer: todo!(),
         }
     }
 }
 
+#[derive(Event)]
+struct CreateSimulator {
+    sampling_rate: NonZeroU32,
+}
+
+fn create_simulator_on_stream_start(stream_start: On<StreamStartEvent>, mut commands: Commands) {
+    commands.trigger(CreateSimulator {
+        sampling_rate: stream_start.sample_rate,
+    });
+}
+
+fn create_simulator_on_stream_restart(
+    stream_restart: On<StreamRestartEvent>,
+    mut commands: Commands,
+) {
+    commands.trigger(CreateSimulator {
+        sampling_rate: stream_restart.current_rate,
+    });
+}
+
+fn create_simulator_on_settings_change(
+    settings: Res<SteamAudioSimulatorSettings>,
+    simulator: Res<AudionimbusSimulator>,
+    mut commands: Commands,
+) {
+    if settings.is_changed() {
+        commands.trigger(CreateSimulator {
+            sampling_rate: simulator.sampling_rate,
+        });
+    }
+}
+
 /// Inspired by the Unity Steam Audio plugin.
 fn update_simulation(
     simulator: Res<AudionimbusSimulator>,
+    simulator_settings: Res<SteamAudioSimulatorSettings>,
     mut settings: ResMut<SteamAudioSettings>,
     listener: Single<&GlobalTransform, With<Listener>>,
     synchro: ResMut<ReflectAndPathingSimulationSynchronization>,
@@ -123,35 +184,38 @@ fn update_simulation(
         return Ok(());
     }
     let transform = listener.compute_transform();
-    let shared_inputs = audionimbus::SimulationSharedInputs {
-        listener: AudionimbusCoordinateSystem::from_bevy_transform(transform).to_audionimbus(),
-        ..settings.to_audionimbus_simulation_shared_inputs()
-    };
-
-    simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
-    simulator.run_direct();
-
-    let Some(timer) = settings.reflection_and_pathing_simulation_timer.as_mut() else {
-        return Ok(());
-    };
-    timer.tick(time.delta());
-    if !timer.is_finished() {
-        // Not yet time to kick off expensive simulation
-        return Ok(());
-    }
-    if !synchro.complete.load(Ordering::SeqCst) {
-        // It's time, but the previous simulation is still running!
-        return Ok(());
-    }
-
-    // The previous simulation is complete, so we can start the next one
-    synchro.complete.store(false, Ordering::SeqCst);
-    timer.reset();
-
-    simulator.set_shared_inputs(
-        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-        &shared_inputs,
+    let shared_inputs = settings.to_audionimbus_simulation_shared_inputs(
+        AudionimbusCoordinateSystem::from_bevy_transform(transform),
+        simulator_settings.clone(),
     );
+
+    {
+        let simulator = simulator.read().unwrap();
+        simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
+        simulator.run_direct();
+
+        let Some(timer) = settings.reflection_and_pathing_simulation_timer.as_mut() else {
+            return Ok(());
+        };
+        timer.tick(time.delta());
+        if !timer.is_finished() {
+            // Not yet time to kick off expensive simulation
+            return Ok(());
+        }
+        if !synchro.complete.load(Ordering::SeqCst) {
+            // It's time, but the previous simulation is still running!
+            return Ok(());
+        }
+
+        // The previous simulation is complete, so we can start the next one
+        synchro.complete.store(false, Ordering::SeqCst);
+        timer.reset();
+
+        simulator.set_shared_inputs(
+            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+            &shared_inputs,
+        );
+    }
     synchro.sender.send(())?;
 
     Ok(())
@@ -169,15 +233,15 @@ struct ReflectAndPathingSimulationSynchronization {
     complete: Arc<AtomicBool>,
 }
 
-fn initialize_simulator(
-    stream_start: On<StreamStartEvent>,
+fn create_simulator(
+    create: On<CreateSimulator>,
     mut commands: Commands,
     context: Res<AudionimbusContext>,
-) {
-    let sample_rate = stream_start.sample_rate;
+    settings: Res<SteamAudioSimulatorSettings>,
+) -> Result {
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
-        sample_rate.get(),
+        create.sampling_rate.into(),
         FRAME_SIZE,
     )
     .with_direct(audionimbus::DirectSimulationSettings {
@@ -187,26 +251,30 @@ fn initialize_simulator(
         max_num_rays: 2048,
         num_diffuse_samples: 8,
         max_duration: 2.0,
-        max_order: AMBISONICS_ORDER,
+        max_order: settings.order,
         max_num_sources: 8,
         num_threads: 1,
     })
     .with_pathing(audionimbus::PathingSimulationSettings {
         num_visibility_samples: 32,
     })
-    .try_build(&context)
-    .unwrap();
+    .try_build(&context)?;
+
     let listener_source = audionimbus::Source::try_new(
         &simulator,
         &audionimbus::SourceSettings {
             flags: audionimbus::SimulationFlags::REFLECTIONS,
         },
-    )
-    .unwrap();
+    )?;
     simulator.add_source(&listener_source);
     simulator.commit();
+
+    let simulator = Arc::new(RwLock::new(simulator.clone()));
     commands.insert_resource(ListenerSource(listener_source));
-    commands.insert_resource(AudionimbusSimulator(simulator.clone()));
+    commands.insert_resource(AudionimbusSimulator {
+        simulator: simulator.clone(),
+        sampling_rate: create.sampling_rate,
+    });
 
     let simulation_complete = Arc::new(AtomicBool::new(false));
     let simulation_complete_inner = simulation_complete.clone();
@@ -214,7 +282,7 @@ fn initialize_simulator(
     let future = async move {
         loop {
             rx.recv().unwrap();
-            simulator.run_reflections();
+            simulator.read().unwrap().run_reflections();
             simulation_complete_inner.store(true, Ordering::Relaxed);
         }
     };
@@ -227,15 +295,26 @@ fn initialize_simulator(
     });
 
     commands.trigger(SimulatorReady);
+    Ok(())
 }
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct AudionimbusContext(pub(crate) audionimbus::Context);
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct AudionimbusSimulator(
-    pub audionimbus::Simulator<audionimbus::Direct, audionimbus::Reflections, audionimbus::Pathing>,
-);
+pub struct AudionimbusSimulator {
+    #[deref]
+    pub simulator: Arc<
+        RwLock<
+            audionimbus::Simulator<
+                audionimbus::Direct,
+                audionimbus::Reflections,
+                audionimbus::Pathing,
+            >,
+        >,
+    >,
+    pub sampling_rate: NonZeroU32,
+}
 
 #[derive(Resource, Deref, DerefMut)]
 pub(crate) struct ListenerSource(pub(crate) audionimbus::Source);
@@ -255,21 +334,13 @@ fn prepare_seedling_data(
     mut listener_source: ResMut<ListenerSource>,
 ) -> Result {
     let listener_transform = listener.into_inner().compute_transform();
-    let listener_position = listener_transform.translation;
     let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(listener_transform);
 
     // Listener source to simulate reverb.
     listener_source.set_inputs(
         audionimbus::SimulationFlags::REFLECTIONS,
         audionimbus::SimulationInputs {
-            source: audionimbus::CoordinateSystem {
-                origin: audionimbus::Vector3::new(
-                    listener_position.x,
-                    listener_position.y,
-                    listener_position.z,
-                ),
-                ..default()
-            },
+            source: listener_orientation.to_audionimbus(),
             direct_simulation: Some(audionimbus::DirectSimulationParameters {
                 distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
                 air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
@@ -344,7 +415,7 @@ fn prepare_seedling_data(
             simulation_outputs,
         )));
         node.source_position = source_position;
-        node.listener_position = listener_position;
+        node.listener_position = listener_transform.translation;
     }
 
     Ok(())

@@ -58,8 +58,6 @@ pub struct Listener;
 pub struct SteamAudioConfig;
 
 pub(crate) const FRAME_SIZE: u32 = 256;
-pub(crate) const AMBISONICS_ORDER: u32 = 2;
-pub(crate) const AMBISONICS_NUM_CHANNELS: u32 = (AMBISONICS_ORDER + 1).pow(2);
 pub(crate) const GAIN_FACTOR_DIRECT: f32 = 1.0;
 pub(crate) const GAIN_FACTOR_REFLECTIONS: f32 = 0.3;
 pub(crate) const GAIN_FACTOR_REVERB: f32 = 0.1;
