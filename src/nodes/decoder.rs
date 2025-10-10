@@ -18,8 +18,8 @@ use firewheel::{
     diff::RealtimeClone,
     event::ProcEvents,
     node::{
-        AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,
-        ProcBuffers, ProcExtra, ProcInfo, ProcessStatus,
+        AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, ProcBuffers,
+        ProcExtra, ProcInfo, ProcessStatus,
     },
 };
 

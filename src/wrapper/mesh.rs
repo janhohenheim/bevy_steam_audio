@@ -49,7 +49,7 @@ impl ToSteamAudioMesh for Mesh {
             vertices: &vertices,
             triangles: &triangles,
             material_indices: &vec![0; triangles.len()],
-            materials: &vec![material],
+            materials: &[material],
         };
         audionimbus::StaticMesh::try_new(scene, &settings).map_err(|e| e.into())
     }

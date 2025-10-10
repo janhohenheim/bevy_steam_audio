@@ -94,7 +94,7 @@ fn update_simulation(
     let transform = listener.compute_transform();
     let shared_inputs = sim_settings.to_audionimbus_simulation_shared_inputs(
         AudionimbusCoordinateSystem::from_bevy_transform(transform),
-        quality.clone(),
+        *quality,
     );
 
     {

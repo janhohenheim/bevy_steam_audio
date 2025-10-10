@@ -9,8 +9,7 @@ use crate::{
     wrapper::ChannelPtrs,
 };
 
-use audionimbus::AudioBuffer;
-use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
+use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
     node::RegisterNode as _,
@@ -21,8 +20,8 @@ use firewheel::{
     diff::RealtimeClone,
     event::ProcEvents,
     node::{
-        AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,
-        ProcBuffers, ProcExtra, ProcInfo, ProcessStatus,
+        AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, ProcBuffers,
+        ProcExtra, ProcInfo, ProcessStatus,
     },
 };
 use itertools::izip;

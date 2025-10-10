@@ -1,37 +1,13 @@
-use std::{collections::VecDeque, iter, marker::PhantomData, ops::Deref};
+use std::marker::PhantomData;
 
 use bevy_ecs::entity_disabling::Disabled;
-use bevy_mesh::PrimitiveTopology;
 use bevy_platform::collections::HashMap;
-use itertools::Itertools;
 
 use crate::{
     prelude::*,
-    scene::{SceneSettings, SteamAudioApp as _, SteamAudioRootScene, TriMesh},
+    scene::SteamAudioRootScene,
     wrapper::{ToSteamAudioMesh as _, ToSteamAudioTransform},
 };
-
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        PostUpdate,
-        (
-            // if we modified or removed a mesh, first despawn it on steam audio's side
-            garbage_collect_meshes,
-            // then if an entity holding a mesh has been touched (when happens in any mutation case *except* when removed!)
-            // we add it to the spawn queue
-            queue_steam_audio_mesh_processing,
-            // Since we already despawned modified meshes, we know that anything that was modified is safe to spawn again.
-            spawn_new_steam_audio_meshes,
-            update_transforms,
-        )
-            .chain()
-            .in_set(SteamAudioSystems::MeshLifecycle),
-    );
-    app.add_observer(remove_mesh_with_material)
-        .add_observer(remove_mesh_from_scene);
-    app.init_resource::<MeshToScene>()
-        .init_resource::<ToSpawn>();
-}
 
 pub struct Mesh3dBackendPlugin {
     _pd: PhantomData<()>,
@@ -45,60 +21,30 @@ impl Default for Mesh3dBackendPlugin {
 
 impl Plugin for Mesh3dBackendPlugin {
     fn build(&self, app: &mut App) {
-        app.set_steam_audio_scene_backend(build_scene);
+        app.add_systems(
+            PostUpdate,
+            (
+                // if we modified or removed a mesh, first despawn it on steam audio's side
+                garbage_collect_meshes,
+                // then if an entity holding a mesh has been touched (when happens in any mutation case *except* when removed!)
+                // we add it to the spawn queue
+                queue_steam_audio_mesh_processing,
+                // Since we already despawned modified meshes, we know that anything that was modified is safe to spawn again.
+                spawn_new_steam_audio_meshes,
+                update_transforms,
+            )
+                .chain()
+                .in_set(SteamAudioSystems::MeshLifecycle),
+        );
+        app.add_observer(remove_mesh_with_material)
+            .add_observer(remove_mesh_from_scene);
+        app.init_resource::<MeshToScene>()
+            .init_resource::<ToSpawn>();
     }
 }
 
 #[derive(Component, Debug, Clone, Copy, Deref, DerefMut, PartialEq)]
 pub struct MeshSteamAudioMaterial(pub SteamAudioMaterial);
-
-fn build_scene(
-    In(settings): In<SceneSettings>,
-    meshes: Res<Assets<Mesh>>,
-    mesh_handles: Query<(
-        Entity,
-        &GlobalTransform,
-        &Mesh3d,
-        Option<&MeshSteamAudioMaterial>,
-    )>,
-) -> TriMesh {
-    let mut materials = Vec::new();
-    let mut material_indices = Vec::new();
-    let mut trimesh = mesh_handles
-        .iter()
-        .filter_map(|(entity, transform, mesh, material)| {
-            if settings
-                .filter
-                .as_ref()
-                .is_some_and(|entities| !entities.contains(&entity))
-            {
-                return None;
-            }
-            let transform = transform.compute_transform();
-            let mesh = meshes.get(mesh)?.clone().transformed_by(transform);
-            let trimesh = TriMesh::from_mesh(&mesh)?;
-
-            if let Some(material) = material {
-                let index = if let Some(index) = materials.iter().position(|m| *m == material.0) {
-                    index
-                } else {
-                    materials.push(material.0);
-                    materials.len() - 1
-                };
-                material_indices
-                    .extend(iter::repeat_n(index as u32, trimesh.material_indices.len()));
-            }
-
-            Some(trimesh)
-        })
-        .fold(TriMesh::default(), |mut acc, t| {
-            acc.extend(t);
-            acc
-        });
-    trimesh.materials = materials;
-    trimesh.material_indices = material_indices;
-    trimesh
-}
 
 #[derive(Resource, Default, Deref, DerefMut)]
 struct MeshToScene(HashMap<AssetId<Mesh>, audionimbus::Scene>);
