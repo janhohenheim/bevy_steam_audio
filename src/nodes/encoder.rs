@@ -193,6 +193,7 @@ impl AudioNodeProcessor for AudionimbusProcessor {
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(update) = event.downcast::<SimulationOutputEvent>() {
+                info!("a");
                 self.simulation_outputs = Some(update.0);
             }
         }

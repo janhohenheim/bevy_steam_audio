@@ -1,6 +1,7 @@
 use bevy::{prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
+    SteamAudioSamplePlayer,
     prelude::*,
     scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
 };
@@ -38,7 +39,7 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
     ));
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
-        SteamAudioPool,
+        SteamAudioSamplePlayer::default(),
         Transform::from_xyz(0.0, 1.0, 2.0),
         PointLight::default(),
     ));

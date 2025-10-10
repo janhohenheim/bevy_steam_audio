@@ -1,14 +1,17 @@
 use std::marker::PhantomData;
 use std::sync::LazyLock;
 
+use bevy_seedling::sample::SamplePlayer;
 use prelude::*;
 
 pub mod nodes;
 pub mod scene;
-mod simulation;
+pub mod simulation;
+pub mod sources;
 mod wrapper;
 pub use audionimbus;
 pub use audionimbus::Material as SteamAudioMaterial;
+
 pub mod settings;
 
 pub mod prelude {
@@ -56,6 +59,7 @@ impl Plugin for SteamAudioPlugin {
             wrapper::plugin,
             scene::plugin,
             settings::plugin,
+            sources::plugin,
         ));
     }
 }
@@ -72,3 +76,17 @@ pub struct SteamAudioListener;
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
     audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap()
 });
+
+#[derive(Component)]
+#[require(Transform, GlobalTransform, SteamAudioPool, SamplePlayer)]
+pub struct SteamAudioSamplePlayer {
+    flags: audionimbus::SimulationFlags,
+}
+
+impl Default for SteamAudioSamplePlayer {
+    fn default() -> Self {
+        Self {
+            flags: audionimbus::SimulationFlags::all(),
+        }
+    }
+}

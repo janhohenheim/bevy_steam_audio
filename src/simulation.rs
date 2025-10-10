@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    STEAM_AUDIO_CONTEXT, SteamAudioListener,
+    STEAM_AUDIO_CONTEXT, SteamAudioListener, SteamAudioSamplePlayer,
     nodes::{
         SteamAudioPool, decoder::AmbisonicDecodeNode, encoder::SteamAudioNode,
         reverb::ReverbDataNode,
@@ -15,6 +15,7 @@ use crate::{
     prelude::*,
     scene::SteamAudioRootScene,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},
+    sources::{AudionimbusSource, ListenerSource},
 };
 
 use bevy_seedling::{
@@ -111,39 +112,40 @@ fn update_simulation(
             simulator.commit();
         }
     }
+
+    decode_node.listener_orientation = listener_orientation;
+
+    for (mut source, transform, _effects) in nodes.iter_mut() {
+        let orientation =
+            AudionimbusCoordinateSystem::from_bevy_transform(transform.compute_transform());
+
+        source.set_inputs(
+            audionimbus::SimulationFlags::DIRECT,
+            audionimbus::SimulationInputs {
+                source: orientation.to_audionimbus(),
+                direct_simulation: Some(audionimbus::DirectSimulationParameters {
+                    distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
+                    air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
+                    directivity: Some(audionimbus::Directivity::default()),
+                    occlusion: Some(audionimbus::Occlusion {
+                        transmission: Some(audionimbus::TransmissionParameters {
+                            num_transmission_rays: 8,
+                        }),
+                        algorithm: audionimbus::OcclusionAlgorithm::Raycast,
+                    }),
+                }),
+                reflections_simulation: Some(
+                    audionimbus::ReflectionsSimulationParameters::Convolution {
+                        baked_data_identifier: None,
+                    },
+                ),
+                pathing_simulation: None,
+            },
+        );
+    }
     {
         let simulator = simulator.read().unwrap();
         simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
-        decode_node.listener_orientation = listener_orientation;
-
-        for (mut source, transform, _effects) in nodes.iter_mut() {
-            let orientation =
-                AudionimbusCoordinateSystem::from_bevy_transform(transform.compute_transform());
-
-            source.set_inputs(
-                audionimbus::SimulationFlags::DIRECT,
-                audionimbus::SimulationInputs {
-                    source: orientation.to_audionimbus(),
-                    direct_simulation: Some(audionimbus::DirectSimulationParameters {
-                        distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
-                        air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-                        directivity: Some(audionimbus::Directivity::default()),
-                        occlusion: Some(audionimbus::Occlusion {
-                            transmission: Some(audionimbus::TransmissionParameters {
-                                num_transmission_rays: 8,
-                            }),
-                            algorithm: audionimbus::OcclusionAlgorithm::Raycast,
-                        }),
-                    }),
-                    reflections_simulation: Some(
-                        audionimbus::ReflectionsSimulationParameters::Convolution {
-                            baked_data_identifier: None,
-                        },
-                    ),
-                    pathing_simulation: None,
-                },
-            );
-        }
 
         simulator.run_direct();
 
@@ -226,16 +228,6 @@ fn update_simulation(
     Ok(())
 }
 
-fn temp(
-    mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
-    mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut decode_node: Single<&mut AmbisonicDecodeNode>,
-    mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
-    listener: Single<&GlobalTransform, With<SteamAudioListener>>,
-    mut listener_source: ResMut<ListenerSource>,
-) {
-}
-
 #[derive(Event)]
 pub(crate) struct SimulatorReady;
 
@@ -314,16 +306,5 @@ pub struct AudionimbusSimulator {
     >,
     pub sampling_rate: NonZeroU32,
 }
-
-#[derive(Resource, Deref, DerefMut)]
-pub(crate) struct ListenerSource(pub(crate) audionimbus::Source);
-
-// TODO: Add an API for `SteamAudioSamplePlayer` that includes all source-related settings.
-// When that component changes, also update the configs on the nodes.
-// Do the nodes also get rebuilt when the sampling rate changes? If not, also rebuild them then.
-
-#[derive(Component, Deref, DerefMut)]
-#[require(Transform, GlobalTransform, SteamAudioPool)]
-pub(crate) struct AudionimbusSource(pub(crate) audionimbus::Source);
 
 pub(crate) struct SimulationOutputEvent(pub(crate) audionimbus::SimulationOutputs);

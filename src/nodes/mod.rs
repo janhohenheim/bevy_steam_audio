@@ -1,4 +1,4 @@
-use crate::{prelude::*, settings::SteamAudioQuality};
+use crate::{nodes::reverb::ReverbDataNode, prelude::*, settings::SteamAudioQuality};
 use bevy_seedling::prelude::*;
 pub(crate) mod decoder;
 pub(crate) mod encoder;
@@ -23,6 +23,7 @@ struct SteamAudioDecodeBus;
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     // we only need one decoder
     commands.spawn((SteamAudioDecodeBus, AmbisonicDecodeNode::default()));
+    commands.spawn(ReverbDataNode);
 
     // Copy-paste this part if you want to set up your own pool!
     commands
