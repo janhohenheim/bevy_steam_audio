@@ -12,6 +12,7 @@ pub use audionimbus::Material as SteamAudioMaterial;
 pub mod settings;
 
 pub mod prelude {
+    pub(crate) use crate::{STEAM_AUDIO_CONTEXT, SteamAudioSystems};
     pub(crate) use bevy_app::prelude::*;
     pub(crate) use bevy_asset::prelude::*;
     pub(crate) use bevy_derive::{Deref, DerefMut};
@@ -26,7 +27,7 @@ pub mod prelude {
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
-    pub use crate::{SteamAudioConfig, SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin};
+    pub use crate::{SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin};
 }
 
 pub struct SteamAudioPlugin {
@@ -41,6 +42,12 @@ impl Default for SteamAudioPlugin {
 
 impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
+        app.configure_sets(
+            PostUpdate,
+            (SteamAudioSystems::MeshLifecycle,)
+                .chain()
+                .after(TransformSystems::Propagate),
+        );
         app.add_plugins((
             nodes::plugin,
             simulation::plugin,
@@ -48,17 +55,17 @@ impl Plugin for SteamAudioPlugin {
             scene::plugin,
             settings::plugin,
         ));
-        app.init_resource::<SteamAudioConfig>();
     }
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SteamAudioSystems {
+    MeshLifecycle,
 }
 
 #[derive(Component, Reflect, Debug)]
 #[reflect(Component)]
 pub struct SteamAudioListener;
-
-#[derive(Resource, Reflect, Default, Debug)]
-#[reflect(Resource)]
-pub struct SteamAudioConfig;
 
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
     audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap()

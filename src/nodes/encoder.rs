@@ -43,9 +43,9 @@ pub struct AudionimbusNode {
 impl Default for AudionimbusNode {
     fn default() -> Self {
         Self {
-            direct_gain: 1.0,
-            reflection_gain: 0.3,
-            reverb_gain: 0.1,
+            direct_gain: 1.0 / 3.0,
+            reflection_gain: 1.0 / 3.0,
+            reverb_gain: 1.0 / 3.0,
             source_position: Vec3::ZERO,
             listener_position: Vec3::ZERO,
         }
@@ -300,12 +300,9 @@ impl AudioNodeProcessor for AudionimbusProcessor {
                     reverb_channel.iter()
                 )
                 .map(|(direct_sample, reflections_sample, reverb_sample)| {
-                    (direct_sample * self.params.direct_gain
+                    direct_sample * self.params.direct_gain
                         + reflections_sample * self.params.reflection_gain
-                        + reverb_sample * self.params.reverb_gain)
-                        / (self.params.direct_gain
-                            + self.params.reflection_gain
-                            + self.params.reverb_gain)
+                        + reverb_sample * self.params.reverb_gain
                 })
             })
             .enumerate()

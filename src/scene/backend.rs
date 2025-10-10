@@ -1,11 +1,13 @@
 use bevy_ecs::system::SystemId;
 use bevy_platform::collections::HashSet;
 
-use crate::{prelude::*, scene::TriMesh};
+use crate::{STEAM_AUDIO_CONTEXT, prelude::*, scene::TriMesh};
 
 pub(super) fn plugin(app: &mut App) {
     let _ = app;
 }
+
+struct SteamAudioMesh(Handle<Mesh>);
 
 /// The current backend registered through [`NavmeshApp::set_steam_audio_scene_backend`]
 #[derive(Resource, Debug, Clone, Deref, DerefMut)]

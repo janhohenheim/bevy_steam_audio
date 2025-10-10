@@ -1,12 +1,31 @@
-use std::{iter, marker::PhantomData};
+use std::{collections::VecDeque, iter, marker::PhantomData, ops::Deref};
+
+use audionimbus::InstancedMesh;
+use bevy_ecs::entity_disabling::Disabled;
+use bevy_mesh::PrimitiveTopology;
+use bevy_platform::collections::HashMap;
+use itertools::Itertools;
 
 use crate::{
     prelude::*,
-    scene::{SceneSettings, SteamAudioApp as _, TriMesh},
+    scene::{SceneSettings, SteamAudioApp as _, SteamAudioRootScene, TriMesh},
 };
 
 pub(super) fn plugin(app: &mut App) {
-    let _ = app;
+    app.add_systems(
+        PostUpdate,
+        (
+            // if we modified or removed a mesh, first despawn it on steam audio's side
+            garbage_collect_meshes,
+            // then if an entity holding a mesh has been touched (when happens in any mutation case *except* when removed!)
+            // we add it to the spawn queue
+            queue_steam_audio_mesh_processing,
+            // Since we already despawned modified meshes, we know that anything that was modified is safe to spawn again.
+            spawn_new_steam_audio_meshes,
+        )
+            .chain()
+            .in_set(SteamAudioSystems::MeshLifecycle),
+    );
 }
 
 pub struct Mesh3dBackendPlugin {
@@ -75,3 +94,162 @@ fn build_scene(
     trimesh.material_indices = material_indices;
     trimesh
 }
+
+#[derive(Resource, Default, Deref, DerefMut)]
+struct MeshToScene(HashMap<AssetId<Mesh>, audionimbus::Scene>);
+
+#[derive(Resource, Default, Deref, DerefMut)]
+struct ToSpawn(Vec<Entity>);
+
+fn queue_steam_audio_mesh_processing(
+    meshes: Query<(Entity, Ref<Mesh3d>), With<MeshSteamAudioMaterial>>,
+    mut to_spawn: ResMut<ToSpawn>,
+) {
+    for (entity, mesh) in meshes.iter() {
+        if mesh.is_changed() {
+            to_spawn.push(entity);
+        }
+    }
+}
+
+fn spawn_new_steam_audio_meshes(
+    mut to_add: ResMut<ToSpawn>,
+    mut map: ResMut<MeshToScene>,
+    mesh_handles: Query<(&Mesh3d, &MeshSteamAudioMaterial, &GlobalTransform), Allow<Disabled>>,
+    meshes: Res<Assets<Mesh>>,
+    mut root: ResMut<SteamAudioRootScene>,
+    mut errors: Local<Vec<String>>,
+    names: Query<NameOrEntity>,
+) -> Result {
+    errors.clear();
+
+    to_add.retain(|entity| {
+        let name = names.get(*entity).unwrap();
+        let Ok((mesh_handle, material, transform)) = mesh_handles.get(*entity) else {
+            errors.push(format!(
+                "{name}: MeshSteamAudioMaterial was added to an entity without Mesh3D"
+            ));
+            return false;
+        };
+        let id = mesh_handle.id();
+        if map.contains_key(&id) {
+            // mesh already processed
+            return false;
+        }
+        let Some(mesh) = meshes.get(id) else {
+            // mesh not loaded yet
+            return true;
+        };
+        let mut sub_scene = match audionimbus::Scene::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &audionimbus::SceneSettings::default(),
+        ) {
+            Ok(sub_scene) => sub_scene,
+            Err(err) => {
+                errors.push(format!(
+                    "{name}: Failed to create sub-scene for mesh: {err}"
+                ));
+                return false;
+            }
+        };
+        let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, material.0) {
+            Ok(mesh) => mesh,
+            Err(err) => {
+                errors.push(format!("{name}: Failed to convert mesh: {err}"));
+                return false;
+            }
+        };
+        sub_scene.add_static_mesh(static_mesh);
+        // committing a new scene should be fine during simulation of a different scene
+        sub_scene.commit();
+        let row_major_transform = transform.to_matrix().transpose().to_cols_array_2d();
+        let transform = audionimbus::Matrix::<f32, 4, 4>::new(row_major_transform);
+
+        let instanced_mesh_settings = audionimbus::InstancedMeshSettings {
+            sub_scene,
+            transform,
+        };
+        let instanced_mesh =
+            match audionimbus::InstancedMesh::try_new(&root, instanced_mesh_settings) {
+                Ok(instanced_mesh) => instanced_mesh,
+                Err(err) => {
+                    errors.push(format!("{name}: Failed to create instanced mesh: {err}"));
+                    return false;
+                }
+            };
+        root.add_instanced_mesh(instanced_mesh.clone());
+        map.insert(id, instanced_mesh);
+        false
+    });
+    if !errors.is_empty() {
+        Err(errors.join("\n").into())
+    } else {
+        Ok(())
+    }
+}
+
+fn garbage_collect_meshes(
+    mut asset_events: MessageReader<AssetEvent<Mesh>>,
+    mut map: ResMut<MeshToScene>,
+    mut root: ResMut<SteamAudioRootScene>,
+) {
+    for event in asset_events.read() {
+        if let AssetEvent::Removed { id } | AssetEvent::Modified { id } = event {
+            if let Some(mesh) = map.remove(id) {
+                root.remove_instanced_mesh(&mesh);
+            }
+        }
+    }
+}
+
+trait ToSteamAudioMesh {
+    fn to_steam_audio_mesh(
+        &self,
+        scene: &audionimbus::Scene,
+        material: audionimbus::Material,
+    ) -> Result<audionimbus::StaticMesh>;
+}
+
+impl ToSteamAudioMesh for Mesh {
+    fn to_steam_audio_mesh(
+        &self,
+        scene: &audionimbus::Scene,
+        material: audionimbus::Material,
+    ) -> Result<audionimbus::StaticMesh> {
+        if self.primitive_topology() != PrimitiveTopology::TriangleList {
+            return Err("Mesh is not a triangle list".into());
+        }
+        let vertices = self
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .ok_or("Mesh has no position attribute")?
+            .as_float3()
+            .ok_or("Mesh position attribute is not a float3")?
+            .iter()
+            .map(|v| audionimbus::Vector3::from(*v))
+            .collect::<Vec<_>>();
+        let triangles = self
+            .indices()
+            .ok_or("Mesh has no indices")?
+            .iter()
+            .chunks(3)
+            .into_iter()
+            .map(|mut chunk| {
+                let v0 = chunk.next().unwrap();
+                let v1 = chunk.next().unwrap();
+                let v2 = chunk.next().unwrap();
+                audionimbus::Triangle::new(v0 as i32, v1 as i32, v2 as i32)
+            })
+            .collect::<Vec<_>>();
+        let settings = audionimbus::StaticMeshSettings {
+            vertices: &vertices,
+            triangles: &triangles,
+            material_indices: &vec![0; triangles.len()],
+            materials: &vec![material],
+        };
+        audionimbus::StaticMesh::try_new(scene, &settings).map_err(|e| e.into())
+    }
+}
+
+// TODO:
+// - update transforms
+// - despawn stuff

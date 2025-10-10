@@ -87,6 +87,7 @@ bevy = { version = "0.17.0-rc.1", default-features = false, features = [
   "wayland",
   "debug",
   "zstd_rust",
+  "dynamic_linking"
 ] }
 
 [lints.clippy]
