@@ -3,7 +3,10 @@ use crate::{SteamAudioSamplePlayer, prelude::*, simulation::AudionimbusSimulator
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<ToSetup>();
     app.add_observer(remove_source);
-    app.add_systems(PostUpdate, init_audionimbus_sources);
+    app.add_systems(
+        PostUpdate,
+        (queue_audionimbus_source_mutation, init_audionimbus_sources).chain(),
+    );
 }
 
 #[derive(Resource, Deref, DerefMut)]
