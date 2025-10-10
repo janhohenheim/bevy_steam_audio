@@ -254,9 +254,9 @@ fn prepare_seedling_data(
     listener: Single<&GlobalTransform, With<Listener>>,
     mut listener_source: ResMut<ListenerSource>,
 ) -> Result {
-    let camera_transform = listener.into_inner().compute_transform();
-    let listener_position = camera_transform.translation;
-    let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(camera_transform);
+    let listener_transform = listener.into_inner().compute_transform();
+    let listener_position = listener_transform.translation;
+    let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(listener_transform);
 
     // Listener source to simulate reverb.
     listener_source.set_inputs(
