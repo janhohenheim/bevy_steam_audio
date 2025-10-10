@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{prelude::*, wrapper::AudionimbusCoordinateSystem};
 
 pub(super) fn plugin(app: &mut App) {
@@ -8,7 +10,20 @@ pub(super) fn plugin(app: &mut App) {
 #[reflect(Resource)]
 pub struct SteamAudioSimulationSettings {
     pub enabled: bool,
+    /// The number of rays to trace from the listener.
+    /// Increasing this value results in more accurate reflections, at the cost of increased CPU usage.
+    pub num_rays: u32,
 
+    /// The number of times each ray traced from the listener is reflected when it encounters a solid object.
+    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during simulation.
+    pub num_bounces: u32,
+
+    /// The duration  of the impulse responses generated when simulating reflections.
+    /// Increasing this value results in longer, more accurate reverb tails, at the cost of increased CPU usage during audio processing.
+    pub impulse_duration: Duration,
+
+    /// When calculating how much sound energy reaches a surface directly from a source, any source that is closer than [`Self::irradiance_min_distance`] to the surface is assumed to be at a distance of [`Self::irradiance_min_distance`], for the purposes of energy calculations.
+    pub irradiance_min_distance: f32,
     pub reflection_and_pathing_simulation_timer: Option<Timer>,
 }
 
@@ -16,6 +31,7 @@ pub struct SteamAudioSimulationSettings {
 #[reflect(Resource)]
 pub struct SteamAudioQuality {
     pub order: u32,
+
     pub direct: SteamAudioDirectQuality,
     pub reflections: SteamAudioReflectionsQuality,
     pub pathing: SteamAudioPathingQuality,
