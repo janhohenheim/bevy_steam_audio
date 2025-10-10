@@ -251,10 +251,10 @@ fn prepare_seedling_data(
     mut ambisonic_node: Query<(&mut AudionimbusNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut AmbisonicDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<AudionimbusNode>)>,
-    camera: Single<&GlobalTransform, With<Listener>>,
+    listener: Single<&GlobalTransform, With<Listener>>,
     mut listener_source: ResMut<ListenerSource>,
 ) -> Result {
-    let camera_transform = camera.into_inner().compute_transform();
+    let camera_transform = listener.into_inner().compute_transform();
     let listener_position = camera_transform.translation;
     let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(camera_transform);
 
