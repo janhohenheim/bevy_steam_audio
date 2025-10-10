@@ -1,10 +1,9 @@
 use std::{
-    num::{NonZeroU32, NonZeroU128},
+    num::NonZeroU32,
     sync::{
         Arc, RwLock,
         atomic::{AtomicBool, Ordering},
     },
-    time::Duration,
 };
 
 use crate::{
@@ -174,14 +173,7 @@ fn create_simulator(
         FRAME_SIZE,
     )
     .with_direct(settings.direct.into())
-    .with_reflections(audionimbus::ReflectionsSimulationSettings::Convolution {
-        max_num_rays: 2048,
-        num_diffuse_samples: 8,
-        max_duration: 2.0,
-        max_order: settings.order,
-        max_num_sources: 8,
-        num_threads: 1,
-    })
+    .with_reflections(settings.reflections.to_audionimbus(settings.order))
     .with_pathing(settings.pathing.into())
     .try_build(&context)?;
 

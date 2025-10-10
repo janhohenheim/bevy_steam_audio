@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use prelude::*;
 
-mod nodes;
+pub mod nodes;
 pub mod scene;
 mod simulation;
 mod wrapper;

@@ -1,8 +1,8 @@
-use std::num::NonZeroU32;
+use std::{iter, num::NonZeroU32};
 
 use crate::{
-    AMBISONICS_NUM_CHANNELS, AMBISONICS_ORDER, FRAME_SIZE, GAIN_FACTOR_DIRECT,
-    GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB, nodes::reverb::SharedReverbData, prelude::*,
+    FRAME_SIZE, GAIN_FACTOR_DIRECT, GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB,
+    nodes::reverb::SharedReverbData, prelude::*, settings::order_to_num_channels,
     simulation::SimulationOutputEvent,
 };
 
@@ -13,6 +13,7 @@ use bevy_seedling::{
 };
 use firewheel::{
     channel_config::ChannelConfig,
+    diff::RealtimeClone,
     event::ProcEvents,
     node::{
         AudioNode, AudioNodeInfo, AudioNodeProcessor, ConstructProcessorContext, EmptyConfig,
@@ -25,11 +26,22 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<AudionimbusNode>();
 }
 #[derive(Diff, Patch, Debug, Clone, Component)]
-pub(crate) struct AudionimbusNode {
+pub struct AudionimbusNode {
     pub(crate) source_position: Vec3,
     pub(crate) listener_position: Vec3,
     #[diff(skip)]
     pub(crate) context: audionimbus::Context,
+}
+
+#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component)]
+pub(crate) struct AudionimbusNodeConfig {
+    pub(crate) order: u32,
+}
+
+impl Default for AudionimbusNodeConfig {
+    fn default() -> Self {
+        Self { order: 2 }
+    }
 }
 
 impl AudionimbusNode {
@@ -43,21 +55,21 @@ impl AudionimbusNode {
 }
 
 impl AudioNode for AudionimbusNode {
-    type Configuration = EmptyConfig;
+    type Configuration = AudionimbusNodeConfig;
 
-    fn info(&self, _config: &Self::Configuration) -> AudioNodeInfo {
+    fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
             .debug_name("ambisonic node")
             // 1 -> 9
             .channel_config(ChannelConfig {
                 num_inputs: ChannelCount::MONO,
-                num_outputs: ChannelCount::new(AMBISONICS_NUM_CHANNELS).unwrap(),
+                num_outputs: ChannelCount::new(order_to_num_channels(config.order)).unwrap(),
             })
     }
 
     fn construct_processor(
         &self,
-        _config: &Self::Configuration,
+        config: &Self::Configuration,
         cx: ConstructProcessorContext,
     ) -> impl AudioNodeProcessor {
         let settings = audionimbus::AudioSettings {
@@ -70,7 +82,7 @@ impl AudioNode for AudionimbusNode {
                 &self.context,
                 &settings,
                 &audionimbus::AmbisonicsEncodeEffectSettings {
-                    max_order: AMBISONICS_ORDER,
+                    max_order: config.order,
                 },
             )
             .unwrap(),
@@ -85,7 +97,7 @@ impl AudioNode for AudionimbusNode {
                 &settings,
                 &audionimbus::ReflectionEffectSettings::Convolution {
                     impulse_response_size: 2 * settings.sampling_rate,
-                    num_channels: AMBISONICS_NUM_CHANNELS,
+                    num_channels: order_to_num_channels(config.order),
                 },
             )
             .unwrap(),
@@ -94,29 +106,33 @@ impl AudioNode for AudionimbusNode {
                 &settings,
                 &audionimbus::ReflectionEffectSettings::Convolution {
                     impulse_response_size: 2 * settings.sampling_rate,
-                    num_channels: AMBISONICS_NUM_CHANNELS,
+                    num_channels: order_to_num_channels(config.order),
                 },
             )
             .unwrap(),
             input_buffer: Vec::with_capacity(FRAME_SIZE as usize),
-            output_buffer: std::array::from_fn(|_| {
-                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2)
-            }),
+            output_buffer: iter::repeat_n(
+                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2),
+                order_to_num_channels(config.order) as usize,
+            )
+            .collect(),
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,
             simulation_outputs: None,
+            order: config.order,
         }
     }
 }
 
 struct AudionimbusProcessor {
+    order: u32,
     params: AudionimbusNode,
     ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
     reflection_effect: audionimbus::ReflectionEffect,
     reverb_effect: audionimbus::ReflectionEffect,
     input_buffer: Vec<f32>,
-    output_buffer: [Vec<f32>; AMBISONICS_NUM_CHANNELS as usize],
+    output_buffer: Vec<Vec<f32>>,
     max_block_frames: NonZeroU32,
     started_draining: bool,
     simulation_outputs: Option<audionimbus::SimulationOutputs>,
