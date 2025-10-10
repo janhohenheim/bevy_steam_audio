@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::sync::LazyLock;
 
 use prelude::*;
 
@@ -63,3 +64,7 @@ pub(crate) const FRAME_SIZE: u32 = 256;
 pub(crate) const GAIN_FACTOR_DIRECT: f32 = 1.0;
 pub(crate) const GAIN_FACTOR_REFLECTIONS: f32 = 0.3;
 pub(crate) const GAIN_FACTOR_REVERB: f32 = 0.1;
+
+pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
+    audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap()
+});

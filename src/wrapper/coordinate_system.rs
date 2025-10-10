@@ -5,7 +5,7 @@ pub(super) fn plugin(app: &mut App) {
     let _ = app;
 }
 
-#[derive(Debug, Patch, Diff, Clone, Copy, Default, RealtimeClone)]
+#[derive(Debug, Patch, Diff, Clone, Copy, Default, PartialEq, RealtimeClone, Reflect)]
 pub(crate) struct AudionimbusCoordinateSystem {
     right: Vec3,
     up: Vec3,

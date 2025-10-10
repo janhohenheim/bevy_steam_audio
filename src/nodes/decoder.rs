@@ -1,7 +1,10 @@
 use std::{iter, num::NonZeroU32};
 
 use crate::{
-    FRAME_SIZE, prelude::*, settings::order_to_num_channels, wrapper::AudionimbusCoordinateSystem,
+    FRAME_SIZE, STEAM_AUDIO_CONTEXT,
+    prelude::*,
+    settings::order_to_num_channels,
+    wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
 use bevy_seedling::{
@@ -23,30 +26,26 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<AmbisonicDecodeNode>();
 }
 
-#[derive(Diff, Patch, Debug, Clone, Component)]
+#[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
+#[reflect(Component)]
 pub struct AmbisonicDecodeNode {
     pub(crate) listener_orientation: AudionimbusCoordinateSystem,
-    #[diff(skip)]
-    pub(crate) context: audionimbus::Context,
-}
-
-impl AmbisonicDecodeNode {
-    pub(crate) fn new(context: audionimbus::Context) -> Self {
-        Self {
-            context,
-            listener_orientation: default(),
-        }
-    }
 }
 
 #[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component)]
-pub(crate) struct AmbisonicDecodeNodeConfig {
+pub struct AmbisonicDecodeNodeConfig {
     pub(crate) order: u32,
 }
 
 impl Default for AmbisonicDecodeNodeConfig {
     fn default() -> Self {
         Self { order: 2 }
+    }
+}
+
+impl AmbisonicDecodeNodeConfig {
+    pub(crate) fn num_channels(&self) -> u32 {
+        order_to_num_channels(self.order)
     }
 }
 
@@ -73,7 +72,7 @@ impl AudioNode for AmbisonicDecodeNode {
             frame_size: FRAME_SIZE,
         };
         let hrtf = audionimbus::Hrtf::try_new(
-            &self.context,
+            &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::HrtfSettings {
                 volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
@@ -86,7 +85,7 @@ impl AudioNode for AmbisonicDecodeNode {
             params: self.clone(),
             hrtf: hrtf.clone(),
             ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect::try_new(
-                &self.context,
+                &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::AmbisonicsDecodeEffectSettings {
                     max_order: config.order,
@@ -97,7 +96,7 @@ impl AudioNode for AmbisonicDecodeNode {
             .unwrap(),
             input_buffer: iter::repeat_n(
                 Vec::with_capacity(FRAME_SIZE as usize),
-                order_to_num_channels(config.order) as usize,
+                config.num_channels() as usize,
             )
             .collect(),
             output_buffer: std::array::from_fn(|_| {
@@ -105,6 +104,9 @@ impl AudioNode for AmbisonicDecodeNode {
             }),
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,
+            order: config.order,
+            mix_container: vec![0.0; (FRAME_SIZE * config.num_channels()) as usize],
+            mix_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
         }
     }
 }
@@ -117,6 +119,9 @@ struct AmbisonicDecodeProcessor {
     output_buffer: [Vec<f32>; 2],
     max_block_frames: NonZeroU32,
     started_draining: bool,
+    order: u32,
+    mix_container: Vec<f32>,
+    mix_ptrs: ChannelPtrs,
 }
 
 impl AudioNodeProcessor for AmbisonicDecodeProcessor {
@@ -128,7 +133,7 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
         _: &mut ProcExtra,
     ) -> ProcessStatus {
         for patch in events.drain_patches::<AmbisonicDecodeNode>() {
-            self.params.apply(patch);
+            Patch::apply(&mut self.params, patch);
         }
 
         if proc_info.in_silence_mask.all_channels_silent(inputs.len()) {
@@ -143,20 +148,20 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
                 continue;
             }
             // Buffer full
+            let channels = order_to_num_channels(self.order);
 
-            let mut mix_container = [0.0; AMBISONICS_NUM_CHANNELS as usize * FRAME_SIZE as usize];
-            for channel in 0..AMBISONICS_NUM_CHANNELS as usize {
-                mix_container[(channel * FRAME_SIZE as usize)..(channel + 1) * FRAME_SIZE as usize]
+            for channel in 0..channels as usize {
+                self.mix_container
+                    [(channel * FRAME_SIZE as usize)..(channel + 1) * FRAME_SIZE as usize]
                     .copy_from_slice(&self.input_buffer[channel]);
             }
-            let mut channel_ptrs = [std::ptr::null_mut(); AMBISONICS_NUM_CHANNELS as usize];
             let settings = audionimbus::AudioBufferSettings {
-                num_channels: Some(AMBISONICS_NUM_CHANNELS),
+                num_channels: Some(channels),
                 ..default()
             };
             let mix_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut mix_container,
-                &mut channel_ptrs,
+                &mut self.mix_container,
+                &mut self.mix_ptrs,
                 settings,
             )
             .unwrap();
@@ -175,7 +180,7 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
             .unwrap();
 
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
-                order: AMBISONICS_ORDER,
+                order: self.order,
                 hrtf: &self.hrtf,
                 orientation: self.params.listener_orientation.to_audionimbus(),
                 binaural: true,
