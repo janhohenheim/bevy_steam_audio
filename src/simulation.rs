@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    FRAME_SIZE, Listener,
+    FRAME_SIZE, SteamAudioListener,
     nodes::{decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode},
     prelude::*,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},
@@ -29,7 +29,7 @@ pub(super) fn plugin(app: &mut App) {
         PostUpdate,
         (
             create_simulator_on_settings_change,
-            update_simulation.run_if(resource_exists::<ReflectAndPathingSimulationSynchronization>),
+            update_simulation.run_if(resource_exists::<AsyncSimulationSynchronization>),
             prepare_seedling_data,
         )
             .chain()
@@ -101,8 +101,8 @@ fn update_simulation(
     simulator: Res<AudionimbusSimulator>,
     quality: Res<SteamAudioQuality>,
     mut sim_settings: ResMut<SteamAudioSimulationSettings>,
-    listener: Single<&GlobalTransform, With<Listener>>,
-    synchro: ResMut<ReflectAndPathingSimulationSynchronization>,
+    listener: Single<&GlobalTransform, With<SteamAudioListener>>,
+    synchro: ResMut<AsyncSimulationSynchronization>,
     time: Res<Time>,
 ) -> Result {
     if !sim_settings.enabled {
@@ -156,7 +156,7 @@ pub(crate) struct SteamAudioPool;
 pub(crate) struct SimulatorReady;
 
 #[derive(Resource)]
-struct ReflectAndPathingSimulationSynchronization {
+struct AsyncSimulationSynchronization {
     sender: crossbeam_channel::Sender<()>,
     complete: Arc<AtomicBool>,
 }
@@ -206,7 +206,7 @@ fn create_simulator(
 
     AsyncComputeTaskPool::get().spawn(future).detach();
 
-    commands.insert_resource(ReflectAndPathingSimulationSynchronization {
+    commands.insert_resource(AsyncSimulationSynchronization {
         sender: tx,
         complete: simulation_complete,
     });
@@ -251,7 +251,7 @@ fn prepare_seedling_data(
     mut ambisonic_node: Query<(&mut AudionimbusNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut AmbisonicDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<AudionimbusNode>)>,
-    listener: Single<&GlobalTransform, With<Listener>>,
+    listener: Single<&GlobalTransform, With<SteamAudioListener>>,
     mut listener_source: ResMut<ListenerSource>,
 ) -> Result {
     let listener_transform = listener.into_inner().compute_transform();
