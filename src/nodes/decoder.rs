@@ -1,12 +1,13 @@
 use std::{iter, num::NonZeroU32};
 
 use crate::{
-    FRAME_SIZE, STEAM_AUDIO_CONTEXT,
+    STEAM_AUDIO_CONTEXT,
     prelude::*,
-    settings::order_to_num_channels,
+    settings::{SteamAudioQuality, order_to_num_channels},
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
+use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
     node::RegisterNode as _,
@@ -32,15 +33,20 @@ pub struct AmbisonicDecodeNode {
     pub(crate) listener_orientation: AudionimbusCoordinateSystem,
 }
 
-#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component)]
+#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Default, Component, Reflect)]
+#[reflect(Component)]
+#[component(on_add = on_add_decode_node_config)]
 pub struct AmbisonicDecodeNodeConfig {
     pub(crate) order: u32,
+    pub(crate) frame_size: u32,
 }
 
-impl Default for AmbisonicDecodeNodeConfig {
-    fn default() -> Self {
-        Self { order: 2 }
-    }
+fn on_add_decode_node_config(mut world: DeferredWorld, ctx: HookContext) {
+    let quality = *world.resource::<SteamAudioQuality>();
+    let mut entity = world.entity_mut(ctx.entity);
+    let mut config = entity.get_mut::<AmbisonicDecodeNodeConfig>().unwrap();
+    config.order = quality.order;
+    config.frame_size = quality.frame_size;
 }
 
 impl AmbisonicDecodeNodeConfig {
@@ -69,7 +75,7 @@ impl AudioNode for AmbisonicDecodeNode {
     ) -> impl AudioNodeProcessor {
         let settings = audionimbus::AudioSettings {
             sampling_rate: cx.stream_info.sample_rate.get(),
-            frame_size: FRAME_SIZE,
+            frame_size: config.frame_size,
         };
         let hrtf = audionimbus::Hrtf::try_new(
             &STEAM_AUDIO_CONTEXT,
@@ -95,7 +101,7 @@ impl AudioNode for AmbisonicDecodeNode {
             )
             .unwrap(),
             input_buffer: iter::repeat_n(
-                Vec::with_capacity(FRAME_SIZE as usize),
+                Vec::with_capacity(config.frame_size as usize),
                 config.num_channels() as usize,
             )
             .collect(),
@@ -105,7 +111,9 @@ impl AudioNode for AmbisonicDecodeNode {
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,
             order: config.order,
-            mix_container: vec![0.0; (FRAME_SIZE * config.num_channels()) as usize],
+            frame_size: config.frame_size,
+            mix_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
+            staging_container: vec![0.0; (config.frame_size * 2) as usize],
             mix_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
         }
     }
@@ -120,7 +128,9 @@ struct AmbisonicDecodeProcessor {
     max_block_frames: NonZeroU32,
     started_draining: bool,
     order: u32,
+    frame_size: u32,
     mix_container: Vec<f32>,
+    staging_container: Vec<f32>,
     mix_ptrs: ChannelPtrs,
 }
 
@@ -151,8 +161,8 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
             let channels = order_to_num_channels(self.order);
 
             for channel in 0..channels as usize {
-                self.mix_container
-                    [(channel * FRAME_SIZE as usize)..(channel + 1) * FRAME_SIZE as usize]
+                self.mix_container[(channel * self.frame_size as usize)
+                    ..(channel + 1) * self.frame_size as usize]
                     .copy_from_slice(&self.input_buffer[channel]);
             }
             let settings = audionimbus::AudioBufferSettings {
@@ -166,14 +176,13 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
             )
             .unwrap();
 
-            let mut staging_container = [0.0; FRAME_SIZE as usize * 2];
             let mut channel_ptrs = [std::ptr::null_mut(); 2];
             let settings = audionimbus::AudioBufferSettings {
                 num_channels: Some(outputs.len() as u32),
                 ..default()
             };
             let staging_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut staging_container,
+                &mut self.staging_container,
                 &mut channel_ptrs,
                 settings,
             )
@@ -191,8 +200,8 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
                 &staging_buffer,
             );
 
-            let left = &staging_container[..FRAME_SIZE as usize];
-            let right = &staging_container[FRAME_SIZE as usize..];
+            let left = &self.staging_container[..self.frame_size as usize];
+            let right = &self.staging_container[self.frame_size as usize..];
             self.output_buffer[0].extend(left);
             self.output_buffer[1].extend(right);
             for buff in &mut self.input_buffer {
@@ -201,7 +210,7 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
         }
 
         for buff in &self.input_buffer {
-            if buff.capacity() > FRAME_SIZE as usize {
+            if buff.capacity() > self.frame_size as usize {
                 error!("allocated input_buffer in processor, this is a bug");
             }
         }

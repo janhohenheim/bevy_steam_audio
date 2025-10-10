@@ -31,6 +31,7 @@ pub struct SteamAudioSimulationSettings {
 #[reflect(Resource)]
 pub struct SteamAudioQuality {
     pub order: u32,
+    pub frame_size: u32,
 
     pub direct: SteamAudioDirectQuality,
     pub reflections: SteamAudioReflectionsQuality,
@@ -251,6 +252,7 @@ impl Default for SteamAudioQuality {
     fn default() -> Self {
         Self {
             order: 2,
+            frame_size: 256,
             direct: default(),
             reflections: default(),
             pathing: default(),

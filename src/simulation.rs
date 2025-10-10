@@ -7,10 +7,10 @@ use std::{
 };
 
 use crate::{
-    FRAME_SIZE, STEAM_AUDIO_CONTEXT, SteamAudioListener,
+    STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        AmbisonicDecodeNodeConfig, AudionimbusNodeConfig, decoder::AmbisonicDecodeNode,
-        encoder::AudionimbusNode, reverb::ReverbDataNode,
+        AmbisonicDecodeNodeConfig, AudionimbusNodeConfig, SteamAudioPool,
+        decoder::AmbisonicDecodeNode, encoder::AudionimbusNode, reverb::ReverbDataNode,
     },
     prelude::*,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},
@@ -26,8 +26,6 @@ use firewheel::{diff::EventQueue, event::NodeEventType};
 use crate::wrapper::*;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(PreStartup, setup_audionimbus);
-
     app.add_systems(
         PostUpdate,
         (
@@ -44,31 +42,6 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(create_simulator)
         .add_observer(create_simulator_on_stream_start)
         .add_observer(create_simulator_on_stream_restart);
-}
-
-pub(crate) fn setup_audionimbus(mut commands: Commands, quality: Res<SteamAudioQuality>) {
-    commands
-        .spawn((
-            SamplerPool(SteamAudioPool),
-            VolumeNode::default(),
-            VolumeNodeConfig {
-                channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
-            },
-            sample_effects![(
-                AudionimbusNode::default(),
-                AudionimbusNodeConfig {
-                    order: quality.order
-                }
-            )],
-        ))
-        // we only need one decoder
-        .chain_node((
-            SteamAudioDecodeBus,
-            AmbisonicDecodeNode::default(),
-            AmbisonicDecodeNodeConfig {
-                order: quality.order,
-            },
-        ));
 }
 
 #[derive(Event)]
@@ -156,12 +129,6 @@ fn update_simulation(
     Ok(())
 }
 
-#[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
-pub(crate) struct SteamAudioPool;
-
-#[derive(NodeLabel, PartialEq, Eq, Debug, Hash, Clone)]
-struct SteamAudioDecodeBus;
-
 #[derive(Event)]
 pub(crate) struct SimulatorReady;
 
@@ -179,7 +146,7 @@ fn create_simulator(
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),
-        FRAME_SIZE,
+        quality.frame_size,
     )
     .with_direct(quality.direct.into())
     .with_reflections(quality.reflections.to_audionimbus(quality.order))

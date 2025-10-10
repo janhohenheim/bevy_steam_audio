@@ -1,4 +1,5 @@
-use crate::prelude::*;
+use crate::{prelude::*, settings::SteamAudioQuality};
+use bevy_seedling::prelude::*;
 pub(crate) mod decoder;
 pub(crate) mod encoder;
 pub(crate) mod reverb;
@@ -7,5 +8,28 @@ pub use decoder::*;
 pub use encoder::*;
 
 pub(super) fn plugin(app: &mut App) {
+    app.add_systems(PreStartup, setup_nodes);
     app.add_plugins((decoder::plugin, encoder::plugin, reverb::plugin));
+}
+
+#[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
+pub struct SteamAudioPool;
+
+#[derive(NodeLabel, PartialEq, Eq, Debug, Hash, Clone)]
+struct SteamAudioDecodeBus;
+
+pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
+    // we only need one decoder
+    commands.spawn((SteamAudioDecodeBus, AmbisonicDecodeNode::default()));
+
+    // Copy-paste this part if you want to set up your own pool!
+    commands
+        .spawn((
+            SamplerPool(SteamAudioPool),
+            VolumeNodeConfig {
+                channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
+            },
+            sample_effects![AudionimbusNode::default()],
+        ))
+        .chain_node(SteamAudioDecodeBus);
 }

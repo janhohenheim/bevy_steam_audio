@@ -1,12 +1,16 @@
 use std::{iter, num::NonZeroU32};
 
 use crate::{
-    FRAME_SIZE, GAIN_FACTOR_DIRECT, GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB,
-    STEAM_AUDIO_CONTEXT, nodes::reverb::SharedReverbData, prelude::*,
-    settings::order_to_num_channels, simulation::SimulationOutputEvent, wrapper::ChannelPtrs,
+    GAIN_FACTOR_DIRECT, GAIN_FACTOR_REFLECTIONS, GAIN_FACTOR_REVERB, STEAM_AUDIO_CONTEXT,
+    nodes::reverb::SharedReverbData,
+    prelude::*,
+    settings::{SteamAudioQuality, order_to_num_channels},
+    simulation::SimulationOutputEvent,
+    wrapper::ChannelPtrs,
 };
 
 use audionimbus::AudioBuffer;
+use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
     node::RegisterNode as _,
@@ -33,16 +37,20 @@ pub struct AudionimbusNode {
     pub(crate) listener_position: Vec3,
 }
 
-#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Reflect)]
+#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Default, Reflect)]
 #[reflect(Component)]
+#[component(on_add = on_add_audionimbus_node_config)]
 pub struct AudionimbusNodeConfig {
     pub(crate) order: u32,
+    pub(crate) frame_size: u32,
 }
 
-impl Default for AudionimbusNodeConfig {
-    fn default() -> Self {
-        Self { order: 2 }
-    }
+fn on_add_audionimbus_node_config(mut world: DeferredWorld, ctx: HookContext) {
+    let quality = *world.resource::<SteamAudioQuality>();
+    let mut entity = world.entity_mut(ctx.entity);
+    let mut config = entity.get_mut::<AudionimbusNodeConfig>().unwrap();
+    config.order = quality.order;
+    config.frame_size = quality.frame_size;
 }
 
 impl AudionimbusNodeConfig {
@@ -72,10 +80,11 @@ impl AudioNode for AudionimbusNode {
     ) -> impl AudioNodeProcessor {
         let settings = audionimbus::AudioSettings {
             sampling_rate: cx.stream_info.sample_rate.get(),
-            frame_size: FRAME_SIZE,
+            frame_size: config.frame_size,
         };
         AudionimbusProcessor {
             params: self.clone(),
+            frame_size: config.frame_size,
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
@@ -108,7 +117,7 @@ impl AudioNode for AudionimbusNode {
                 },
             )
             .unwrap(),
-            input_buffer: Vec::with_capacity(FRAME_SIZE as usize),
+            input_buffer: Vec::with_capacity(config.frame_size as usize),
             output_buffer: iter::repeat_n(
                 Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2),
                 config.num_channels() as usize,
@@ -118,19 +127,25 @@ impl AudioNode for AudionimbusNode {
             started_draining: false,
             simulation_outputs: None,
             order: config.order,
-            ambisonics_encode_container: vec![0.0; (FRAME_SIZE * config.num_channels()) as usize],
+            ambisonics_encode_container: vec![
+                0.0;
+                (config.frame_size * config.num_channels()) as usize
+            ],
             ambisonics_encode_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize]
                 .into(),
-            reflections_container: vec![0.0; (FRAME_SIZE * config.num_channels()) as usize],
+            reflections_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
             reflections_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
-            reverb_container: vec![0.0; (FRAME_SIZE * config.num_channels()) as usize],
+            reverb_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
             reverb_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
+            input_container: vec![0.0; (config.frame_size) as usize],
+            direct_container: vec![0.0; (config.frame_size) as usize],
         }
     }
 }
 
 struct AudionimbusProcessor {
     order: u32,
+    frame_size: u32,
     params: AudionimbusNode,
     ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
@@ -147,6 +162,8 @@ struct AudionimbusProcessor {
     reflections_ptrs: ChannelPtrs,
     reverb_container: Vec<f32>,
     reverb_ptrs: ChannelPtrs,
+    input_container: Vec<f32>,
+    direct_container: Vec<f32>,
 }
 
 impl AudioNodeProcessor for AudionimbusProcessor {
@@ -189,18 +206,16 @@ impl AudioNodeProcessor for AudionimbusProcessor {
             let reflection_effect_params = simulation_outputs.reflections();
 
             let mut channel_ptrs = [std::ptr::null_mut(); 1];
-            let mut input_container = [0.0; FRAME_SIZE as usize];
-            input_container.copy_from_slice(&self.input_buffer);
+            self.input_container.copy_from_slice(&self.input_buffer);
             let input_buffer = audionimbus::AudioBuffer::try_borrowed_with_data(
-                &input_container,
+                &self.input_container,
                 &mut channel_ptrs,
             )
             .unwrap();
 
-            let mut direct_container = [0.0; FRAME_SIZE as usize];
             let mut channel_ptrs = [std::ptr::null_mut(); 1];
             let direct_buffer = audionimbus::AudioBuffer::try_borrowed_with_data(
-                &mut direct_container,
+                &mut self.direct_container,
                 &mut channel_ptrs,
             )
             .unwrap();
@@ -283,7 +298,7 @@ impl AudioNodeProcessor for AudionimbusProcessor {
             self.input_buffer.clear();
         }
 
-        if self.input_buffer.capacity() > FRAME_SIZE as usize {
+        if self.input_buffer.capacity() > self.frame_size as usize {
             error!("allocated input_buffer in processor, this is a bug");
         }
 
