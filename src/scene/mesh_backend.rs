@@ -1,6 +1,5 @@
 use std::{collections::VecDeque, iter, marker::PhantomData, ops::Deref};
 
-use audionimbus::InstancedMesh;
 use bevy_ecs::entity_disabling::Disabled;
 use bevy_mesh::PrimitiveTopology;
 use bevy_platform::collections::HashMap;
@@ -26,6 +25,8 @@ pub(super) fn plugin(app: &mut App) {
             .chain()
             .in_set(SteamAudioSystems::MeshLifecycle),
     );
+    app.add_observer(remove_mesh_with_material)
+        .add_observer(remove_mesh_from_scene);
 }
 
 pub struct Mesh3dBackendPlugin {
@@ -101,6 +102,9 @@ struct MeshToScene(HashMap<AssetId<Mesh>, audionimbus::Scene>);
 #[derive(Resource, Default, Deref, DerefMut)]
 struct ToSpawn(Vec<Entity>);
 
+#[derive(Component)]
+struct InstancedMesh(audionimbus::InstancedMesh);
+
 fn queue_steam_audio_mesh_processing(
     meshes: Query<(Entity, Ref<Mesh3d>), With<MeshSteamAudioMaterial>>,
     mut to_spawn: ResMut<ToSpawn>,
@@ -112,7 +116,23 @@ fn queue_steam_audio_mesh_processing(
     }
 }
 
+fn remove_mesh_with_material(remove: On<Remove, MeshSteamAudioMaterial>, mut commands: Commands) {
+    commands.entity(remove.entity).try_remove::<InstancedMesh>();
+}
+
+fn remove_mesh_from_scene(
+    remove: On<Replace, InstancedMesh>,
+    instanced_mesh: Query<&InstancedMesh, Allow<Disabled>>,
+    mut root: ResMut<SteamAudioRootScene>,
+) -> Result {
+    let instanced_mesh = instanced_mesh.get(remove.entity)?;
+    // replace runs *before* the actual replace, so let's remove the *old* mesh
+    root.remove_instanced_mesh(&instanced_mesh.0);
+    Ok(())
+}
+
 fn spawn_new_steam_audio_meshes(
+    mut commands: Commands,
     mut to_add: ResMut<ToSpawn>,
     mut map: ResMut<MeshToScene>,
     mesh_handles: Query<(&Mesh3d, &MeshSteamAudioMaterial, &GlobalTransform), Allow<Disabled>>,
@@ -132,41 +152,43 @@ fn spawn_new_steam_audio_meshes(
             return false;
         };
         let id = mesh_handle.id();
-        if map.contains_key(&id) {
-            // mesh already processed
-            return false;
-        }
         let Some(mesh) = meshes.get(id) else {
             // mesh not loaded yet
             return true;
         };
-        let mut sub_scene = match audionimbus::Scene::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &audionimbus::SceneSettings::default(),
-        ) {
-            Ok(sub_scene) => sub_scene,
-            Err(err) => {
-                errors.push(format!(
-                    "{name}: Failed to create sub-scene for mesh: {err}"
-                ));
-                return false;
-            }
+        let sub_scene = if let Some(sub_scene) = map.get(&id) {
+            sub_scene.clone()
+        } else {
+            let mut sub_scene = match audionimbus::Scene::try_new(
+                &STEAM_AUDIO_CONTEXT,
+                &audionimbus::SceneSettings::default(),
+            ) {
+                Ok(sub_scene) => sub_scene,
+                Err(err) => {
+                    errors.push(format!(
+                        "{name}: Failed to create sub-scene for mesh: {err}"
+                    ));
+                    return false;
+                }
+            };
+            let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, material.0) {
+                Ok(mesh) => mesh,
+                Err(err) => {
+                    errors.push(format!("{name}: Failed to convert mesh: {err}"));
+                    return false;
+                }
+            };
+            sub_scene.add_static_mesh(static_mesh);
+            // committing a new scene should be fine during simulation of a different scene
+            sub_scene.commit();
+            map.insert(id, sub_scene.clone());
+            sub_scene
         };
-        let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, material.0) {
-            Ok(mesh) => mesh,
-            Err(err) => {
-                errors.push(format!("{name}: Failed to convert mesh: {err}"));
-                return false;
-            }
-        };
-        sub_scene.add_static_mesh(static_mesh);
-        // committing a new scene should be fine during simulation of a different scene
-        sub_scene.commit();
         let row_major_transform = transform.to_matrix().transpose().to_cols_array_2d();
         let transform = audionimbus::Matrix::<f32, 4, 4>::new(row_major_transform);
 
         let instanced_mesh_settings = audionimbus::InstancedMeshSettings {
-            sub_scene,
+            sub_scene: sub_scene.clone(),
             transform,
         };
         let instanced_mesh =
@@ -178,7 +200,10 @@ fn spawn_new_steam_audio_meshes(
                 }
             };
         root.add_instanced_mesh(instanced_mesh.clone());
-        map.insert(id, instanced_mesh);
+        commands
+            .entity(*entity)
+            .try_insert(InstancedMesh(instanced_mesh));
+
         false
     });
     if !errors.is_empty() {
@@ -191,13 +216,10 @@ fn spawn_new_steam_audio_meshes(
 fn garbage_collect_meshes(
     mut asset_events: MessageReader<AssetEvent<Mesh>>,
     mut map: ResMut<MeshToScene>,
-    mut root: ResMut<SteamAudioRootScene>,
 ) {
     for event in asset_events.read() {
         if let AssetEvent::Removed { id } | AssetEvent::Modified { id } = event {
-            if let Some(mesh) = map.remove(id) {
-                root.remove_instanced_mesh(&mesh);
-            }
+            map.remove(id);
         }
     }
 }
