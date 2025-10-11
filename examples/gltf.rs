@@ -1,4 +1,4 @@
-use bevy::{prelude::*, scene::SceneInstanceReady};
+use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     SteamAudioSamplePlayer,
@@ -22,7 +22,14 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, assets: Res<AssetServer>) {
+fn setup(
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let audio_pos = Transform::from_xyz(40.0, 12.0, 0.0);
+
     commands
         .spawn(SceneRoot(assets.load("dungeon.glb#Scene0")))
         .observe(set_material);
@@ -35,12 +42,15 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
             ..default()
         },
         CameraController::default(),
+        Transform::from_xyz(18.0, 12.0, 0.0).looking_at(audio_pos.translation, Vec3::Y),
         SteamAudioListener,
     ));
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
         SteamAudioSamplePlayer::default(),
-        Transform::from_xyz(0.0, 1.0, 2.0),
+        audio_pos,
+        Mesh3d(meshes.add(Sphere::new(0.5))),
+        MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400).with_alpha(0.5))),
         PointLight::default(),
     ));
     commands.spawn((
