@@ -43,8 +43,8 @@ impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
             direct_gain: 1.0,
-            reflection_gain: 0.3,
-            reverb_gain: 0.1,
+            reflection_gain: 0.5,
+            reverb_gain: 0.02,
             source_position: Vec3::ZERO,
             listener_position: Vec3::ZERO,
         }

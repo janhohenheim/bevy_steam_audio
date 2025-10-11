@@ -62,7 +62,7 @@ fn setup(
 fn set_material(
     ready: On<SceneInstanceReady>,
     children: Query<&Children>,
-    meshes: Query<(), With<Mesh3d>>,
+    meshes: Query<(), (With<Mesh3d>, Without<SamplePlayer>)>,
     mut commands: Commands,
 ) {
     for child in children.iter_descendants(ready.entity) {
