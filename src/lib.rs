@@ -49,7 +49,12 @@ impl Plugin for SteamAudioPlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PostUpdate,
-            (SteamAudioSystems::MeshLifecycle,)
+            (
+                SteamAudioSystems::CreateSimulator,
+                SteamAudioSystems::MeshLifecycle,
+                SteamAudioSystems::UpdateSources,
+                SteamAudioSystems::RunSimulator,
+            )
                 .chain()
                 .after(TransformSystems::Propagate),
         );
@@ -66,7 +71,10 @@ impl Plugin for SteamAudioPlugin {
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SteamAudioSystems {
+    CreateSimulator,
     MeshLifecycle,
+    UpdateSources,
+    RunSimulator,
 }
 
 #[derive(Component, Reflect, Debug)]

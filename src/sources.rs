@@ -5,7 +5,12 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(remove_source);
     app.add_systems(
         PostUpdate,
-        (queue_audionimbus_source_mutation, init_audionimbus_sources).chain(),
+        (
+            queue_audionimbus_source_mutation,
+            init_audionimbus_sources.run_if(resource_exists::<AudionimbusSimulator>),
+        )
+            .chain()
+            .in_set(SteamAudioSystems::UpdateSources),
     );
 }
 

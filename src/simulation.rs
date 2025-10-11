@@ -22,7 +22,6 @@ use bevy_seedling::{
     context::{StreamRestartEvent, StreamStartEvent},
     prelude::*,
 };
-use bevy_transform::TransformSystems;
 use firewheel::{diff::EventQueue, event::NodeEventType};
 
 use crate::wrapper::*;
@@ -30,13 +29,18 @@ use crate::wrapper::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        (
-            create_simulator_on_settings_change,
-            update_simulation.run_if(resource_exists::<AsyncSimulationSynchronization>),
-        )
-            .chain()
-            .run_if(resource_exists::<AudionimbusSimulator>)
-            .after(TransformSystems::Propagate),
+        create_simulator_on_settings_change
+            .in_set(SteamAudioSystems::CreateSimulator)
+            .run_if(resource_exists::<AudionimbusSimulator>),
+    );
+    app.add_systems(
+        PostUpdate,
+        update_simulation
+            .in_set(SteamAudioSystems::RunSimulator)
+            .run_if(
+                resource_exists::<AsyncSimulationSynchronization>
+                    .and(resource_exists::<AudionimbusSimulator>),
+            ),
     );
     app.init_resource::<SteamAudioSimulationSettings>()
         .init_resource::<SteamAudioQuality>();
