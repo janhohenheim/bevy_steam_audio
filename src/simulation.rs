@@ -154,10 +154,15 @@ fn create_simulator(
         },
     )?;
     simulator.add_source(&listener_source);
+
+    let probe_batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
+    simulator.add_probe_batch(&probe_batch);
+
     simulator.commit();
 
     let simulator = Arc::new(RwLock::new(simulator.clone()));
     commands.insert_resource(ListenerSource(listener_source));
+    commands.insert_resource(SteamAudioProbeBatch(probe_batch));
     commands.insert_resource(AudionimbusSimulator {
         simulator: simulator.clone(),
         sampling_rate: create.sampling_rate,
@@ -173,7 +178,12 @@ fn create_simulator(
 
     let future = async move {
         loop {
-            simulator.read().unwrap().run_reflections();
+            {
+                let simulator = simulator.write().unwrap();
+                simulator.run_reflections();
+                simulator.run_pathing();
+            }
+
             simulation_complete_inner.store(true, Ordering::Relaxed);
             if rx.recv().is_err() {
                 // tx dropped because we created a new simulation
@@ -190,6 +200,7 @@ fn create_simulator(
 fn migrate_simulator(
     simulator: Res<AudionimbusSimulator>,
     sources: Query<&AudionimbusSource>,
+    probe_batch: Res<SteamAudioProbeBatch>,
     root: Res<SteamAudioRootScene>,
 ) {
     if !simulator.is_changed() {
@@ -200,6 +211,7 @@ fn migrate_simulator(
         simulator.add_source(source);
     }
     simulator.set_scene(&root);
+    simulator.add_probe_batch(&probe_batch);
     simulator.commit();
 }
 
@@ -234,7 +246,7 @@ fn update_simulation(
     if synchro.complete.load(Ordering::SeqCst) {
         // todo: only do this when needed
         root.commit();
-        simulator.write().unwrap().commit();
+        //simulator.write().unwrap().commit();
     }
 
     decode_node.listener_orientation = listener_orientation;
@@ -273,7 +285,7 @@ fn update_simulation(
         let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
 
         node.source_position = transform.translation;
-        node.listener_position = listener_transform.translation;
+        node.listener_position = listener_orientation;
     }
 
     let simulator = simulator.read().unwrap();

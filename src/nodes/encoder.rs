@@ -5,7 +5,7 @@ use crate::{
     nodes::reverb::SharedReverbData,
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
-    wrapper::ChannelPtrs,
+    wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
 use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
@@ -36,7 +36,7 @@ pub struct SteamAudioNode {
     pub reverb_gain: f32,
     pub pathing_gain: f32,
     pub source_position: Vec3,
-    pub listener_position: Vec3,
+    pub listener_position: AudionimbusCoordinateSystem,
 }
 
 impl Default for SteamAudioNode {
@@ -47,7 +47,7 @@ impl Default for SteamAudioNode {
             reverb_gain: 0.1,
             pathing_gain: 0.5,
             source_position: Vec3::ZERO,
-            listener_position: Vec3::ZERO,
+            listener_position: AudionimbusCoordinateSystem::default(),
         }
     }
 }
@@ -146,10 +146,7 @@ impl AudioNode for SteamAudioNode {
                 &settings,
                 &audionimbus::PathEffectSettings {
                     max_order: config.order,
-                    spatialization: Some(audionimbus::Spatialization {
-                        speaker_layout: audionimbus::SpeakerLayout::Stereo,
-                        hrtf: &hrtf,
-                    }),
+                    spatialization: None,
                 },
             )
             .unwrap(),
@@ -180,6 +177,7 @@ impl AudioNode for SteamAudioNode {
             pathing_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
             input_container: vec![0.0; (config.frame_size) as usize],
             direct_container: vec![0.0; (config.frame_size) as usize],
+            hrtf,
         }
     }
 }
@@ -210,6 +208,7 @@ struct SteamAudioProcessor {
     pathing_ptrs: ChannelPtrs,
     input_container: Vec<f32>,
     direct_container: Vec<f32>,
+    hrtf: audionimbus::Hrtf,
 }
 
 impl SteamAudioProcessor {
@@ -277,7 +276,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 if self.pathing_effect_params.is_none()
                     || update.flags.contains(audionimbus::SimulationFlags::PATHING)
                 {
-                    self.pathing_effect_params = Some(update.outputs.pathing().into_inner());
+                    let mut pathing = update.outputs.pathing().into_inner();
+                    pathing.order = self.order;
+                    pathing.listener = self.params.listener_position.to_audionimbus();
+                    pathing.hrtf = self.hrtf.clone();
+                    self.pathing_effect_params = Some(pathing);
                 }
             }
         }
@@ -330,7 +333,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             );
 
             let listener_position = self.params.listener_position;
-            let direction = source_position - listener_position;
+            let direction = source_position - listener_position.origin;
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
 
             let settings = audionimbus::AudioBufferSettings {
@@ -511,6 +514,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             .collect();
 
         self.max_block_frames = stream_info.max_block_frames;
+        self.hrtf = hrtf
     }
 }
 

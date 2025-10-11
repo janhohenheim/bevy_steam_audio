@@ -4,7 +4,6 @@ use bevy_math::bounding::Aabb3d;
 use crate::{prelude::*, scene::SteamAudioRootScene, wrapper::ToSteamAudioTransform};
 
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<SteamAudioProbeBatch>();
     app.add_observer(generate_probes);
 }
 
@@ -26,13 +25,7 @@ impl Default for GenerateProbes {
 }
 
 #[derive(Resource, Debug, Deref, DerefMut)]
-pub struct SteamAudioProbeBatch(audionimbus::ProbeBatch);
-
-impl FromWorld for SteamAudioProbeBatch {
-    fn from_world(_world: &mut World) -> Self {
-        SteamAudioProbeBatch(audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT).unwrap())
-    }
-}
+pub struct SteamAudioProbeBatch(pub audionimbus::ProbeBatch);
 
 fn generate_probes(
     generate: On<GenerateProbes>,
@@ -68,5 +61,37 @@ fn generate_probes(
     batch.add_probe_array(&array);
     batch.commit();
 
+    let id = audionimbus::BakedDataIdentifier::Pathing {
+        variation: audionimbus::BakedDataVariation::Dynamic,
+    };
+
+    let params = audionimbus::PathBakeParams {
+        scene: &root,
+        probe_batch: &batch,
+        identifier: &id,
+        num_samples: 32,
+        radius: 1.0,
+        threshold: 0.1,
+        visibility_range: 1000.0,
+        path_range: 100.0,
+        num_threads: 4,
+    };
+    let mut callback: Box<dyn FnMut(f32)> = Box::new(|x| println!("progress: {x:.2}"));
+    let ctx = &mut callback as *mut _ as *mut std::ffi::c_void;
+
+    audionimbus::bake_path(
+        &STEAM_AUDIO_CONTEXT,
+        &params,
+        Some(audionimbus::CallbackInformation {
+            callback: trampoline,
+            user_data: ctx,
+        }),
+    );
+
     Ok(())
+}
+
+extern "C" fn trampoline(progress: f32, ctx: *mut std::ffi::c_void) {
+    let closure = unsafe { &mut *(ctx as *mut Box<dyn FnMut(f32)>) };
+    closure(progress);
 }

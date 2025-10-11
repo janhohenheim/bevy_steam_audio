@@ -6,15 +6,15 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Debug, Patch, Diff, Clone, Copy, Default, PartialEq, RealtimeClone, Reflect)]
-pub(crate) struct AudionimbusCoordinateSystem {
-    right: Vec3,
-    up: Vec3,
-    ahead: Vec3,
-    origin: Vec3,
+pub struct AudionimbusCoordinateSystem {
+    pub right: Vec3,
+    pub up: Vec3,
+    pub ahead: Vec3,
+    pub origin: Vec3,
 }
 
 impl AudionimbusCoordinateSystem {
-    pub(crate) fn from_bevy_transform(transform: Transform) -> Self {
+    pub fn from_bevy_transform(transform: Transform) -> Self {
         let listener_position = transform.translation;
 
         let listener_orientation_right = transform.right();
@@ -28,7 +28,7 @@ impl AudionimbusCoordinateSystem {
         }
     }
 
-    pub(crate) fn to_audionimbus(self) -> audionimbus::CoordinateSystem {
+    pub fn to_audionimbus(self) -> audionimbus::CoordinateSystem {
         fn vec3_to_vector3(vec3: Vec3) -> audionimbus::Vector3 {
             audionimbus::Vector3::new(vec3.x, vec3.y, vec3.z)
         }

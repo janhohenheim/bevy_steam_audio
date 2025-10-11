@@ -48,7 +48,14 @@ fn setup(
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
         SteamAudioPool,
         sample_effects![SteamAudioNode {
-            reverb_gain: 0.01,
+            // TODO: this is just for testing, revert it to only `reverb_gain: 0.01` with no comment :)
+            // boost the reflected sound relative to the direct sound
+            direct_gain: 0.0,
+            reflection_gain: 0.0,
+            // reverb is a kind of reflection, so it's enabled for this sampler by the flags above.
+            // but we can disable it by setting the gain to zero
+            reverb_gain: 0.0,
+            pathing_gain: 2.0,
             ..default()
         }],
         audio_pos,
