@@ -11,7 +11,7 @@ use crate::{
     nodes::{decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode},
     prelude::*,
     scene::SteamAudioRootScene,
-    settings::{SteamAudioQuality, SteamAudioSimulationSettings},
+    settings::{SteamAudioEnabled, SteamAudioQuality},
     sources::{AudionimbusSource, ListenerSource},
 };
 
@@ -39,7 +39,7 @@ pub(super) fn plugin(app: &mut App) {
                     .and(resource_exists::<AudionimbusSimulator>),
             ),
     );
-    app.init_resource::<SteamAudioSimulationSettings>()
+    app.init_resource::<SteamAudioEnabled>()
         .init_resource::<SteamAudioQuality>();
     app.add_observer(create_simulator)
         .add_observer(create_simulator_on_stream_start)
@@ -85,7 +85,7 @@ fn recreate_simulator_on_settings_change(
 fn update_simulation(
     simulator: Res<AudionimbusSimulator>,
     quality: Res<SteamAudioQuality>,
-    mut sim_settings: ResMut<SteamAudioSimulationSettings>,
+    mut enabled: ResMut<SteamAudioEnabled>,
     listener: Single<&GlobalTransform, With<SteamAudioListener>>,
     mut listener_source: ResMut<ListenerSource>,
     synchro: ResMut<AsyncSimulationSynchronization>,
@@ -96,13 +96,12 @@ fn update_simulation(
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
     time: Res<Time>,
 ) -> Result {
-    if !sim_settings.enabled {
+    if !enabled.enabled {
         return Ok(());
     }
     let listener_transform = listener.compute_transform();
     let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(listener_transform);
-    let shared_inputs =
-        sim_settings.to_audionimbus_simulation_shared_inputs(listener_orientation, *quality);
+    let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
 
     if synchro.complete.load(Ordering::SeqCst) {
         // todo: only do this when needed
@@ -158,10 +157,7 @@ fn update_simulation(
         )));
     }
 
-    let Some(timer) = sim_settings
-        .reflection_and_pathing_simulation_timer
-        .as_mut()
-    else {
+    let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
         // User doesn't want any reflection or pathing simulation
         return Ok(());
     };
