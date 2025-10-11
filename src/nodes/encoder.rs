@@ -53,21 +53,21 @@ impl Default for SteamAudioNode {
 
 #[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Default, Reflect)]
 #[reflect(Component)]
-#[component(on_add = on_add_audionimbus_node_config)]
-pub struct SteamAUdioNodeConfig {
+#[component(on_add = on_add_steam_audio_node_config)]
+pub struct SteamAudioNodeConfig {
     pub(crate) order: u32,
     pub(crate) frame_size: u32,
 }
 
-fn on_add_audionimbus_node_config(mut world: DeferredWorld, ctx: HookContext) {
+fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let quality = *world.resource::<SteamAudioQuality>();
     let mut entity = world.entity_mut(ctx.entity);
-    let mut config = entity.get_mut::<SteamAUdioNodeConfig>().unwrap();
+    let mut config = entity.get_mut::<SteamAudioNodeConfig>().unwrap();
     config.order = quality.order;
     config.frame_size = quality.frame_size;
 }
 
-impl SteamAUdioNodeConfig {
+impl SteamAudioNodeConfig {
     #[inline]
     fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
@@ -75,7 +75,7 @@ impl SteamAUdioNodeConfig {
 }
 
 impl AudioNode for SteamAudioNode {
-    type Configuration = SteamAUdioNodeConfig;
+    type Configuration = SteamAudioNodeConfig;
 
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()

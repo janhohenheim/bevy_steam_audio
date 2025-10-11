@@ -95,9 +95,9 @@ pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|
 });
 
 #[derive(Component)]
-#[require(Transform, GlobalTransform, SteamAudioPool, SamplePlayer)]
+#[require(Transform, GlobalTransform, SamplePlayer)]
 pub struct SteamAudioSamplePlayer {
-    flags: audionimbus::SimulationFlags,
+    pub flags: audionimbus::SimulationFlags,
 }
 
 impl Default for SteamAudioSamplePlayer {

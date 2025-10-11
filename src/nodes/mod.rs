@@ -11,7 +11,8 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_nodes);
     app.add_plugins((decoder::plugin, encoder::plugin, reverb::plugin));
     app.register_required_components::<SteamAudioPool, Transform>()
-        .register_required_components::<SteamAudioPool, GlobalTransform>();
+        .register_required_components::<SteamAudioPool, GlobalTransform>()
+        .register_required_components::<SteamAudioPool, SteamAudioSamplePlayer>();
 }
 
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]

@@ -40,10 +40,10 @@ fn setup(
         MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC),
     ));
 
-    // The sample player uses Steam Audio through SteamAudioSamplePlayer
+    // The sample player uses Steam Audio through the SteamAudioPool
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
-        SteamAudioSamplePlayer::default(),
+        SteamAudioPool,
         Transform::from_xyz(6.0, 0.0, 0.0),
         Mesh3d(meshes.add(Sphere::new(0.5))),
         MeshMaterial3d(materials.add(Color::WHITE)),
