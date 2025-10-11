@@ -278,12 +278,12 @@ fn create_simulator(
 
     let future = async move {
         loop {
+            simulator.read().unwrap().run_reflections();
+            simulation_complete_inner.store(true, Ordering::Relaxed);
             if rx.recv().is_err() {
                 // tx dropped because we created a new simulation
                 break;
             }
-            simulator.read().unwrap().run_reflections();
-            simulation_complete_inner.store(true, Ordering::Relaxed);
         }
     };
     AsyncComputeTaskPool::get().spawn(future).detach();

@@ -100,11 +100,9 @@ impl AudioNode for AmbisonicDecodeNode {
                 },
             )
             .unwrap(),
-            input_buffer: iter::repeat_n(
-                Vec::with_capacity(config.frame_size as usize),
-                config.num_channels() as usize,
-            )
-            .collect(),
+            input_buffer: iter::repeat_with(|| Vec::with_capacity(config.frame_size as usize))
+                .take(config.num_channels() as usize)
+                .collect(),
             output_buffer: std::array::from_fn(|_| {
                 Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2)
             }),

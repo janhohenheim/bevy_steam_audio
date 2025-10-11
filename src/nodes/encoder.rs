@@ -132,10 +132,11 @@ impl AudioNode for SteamAudioNode {
             )
             .unwrap(),
             input_buffer: Vec::with_capacity(config.frame_size as usize),
-            output_buffer: iter::repeat_n(
-                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2),
-                config.num_channels() as usize,
-            )
+
+            output_buffer: iter::repeat_with(|| {
+                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2)
+            })
+            .take(config.num_channels() as usize)
             .collect(),
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,

@@ -1,4 +1,6 @@
-use bevy::{prelude::*, scene::SceneInstanceReady};
+use std::f32::consts::TAU;
+
+use bevy::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     SteamAudioSamplePlayer,
@@ -6,60 +8,63 @@ use bevy_steam_audio::{
     scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
 };
 
-mod util;
-use util::prelude::*;
-
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
             SeedlingPlugin::default(),
+            // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
+            // Steam Audio still needs some scene backend to know how to build its 3D scene.
+            // Mesh3dBackendPlugin does this by simply using all `Mesh3d`s.
             Mesh3dBackendPlugin::default(),
-            CameraControllerPlugin,
         ))
         .add_systems(Startup, setup)
+        .add_systems(Update, rotate_audio)
         .run();
 }
 
-fn setup(mut commands: Commands, assets: Res<AssetServer>) {
-    commands
-        .spawn(SceneRoot(assets.load("dungeon.glb#Scene0")))
-        .observe(set_material);
+fn setup(
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // The camera is our listener using  SteamAudioListener
+    commands.spawn((Camera3d::default(), SteamAudioListener));
+
+    // Some occluding geometry using MeshSteamAudioMaterial
     commands.spawn((
-        Camera3d::default(),
-        EnvironmentMapLight {
-            diffuse_map: assets.load("environment_maps/voortrekker_interior_1k_diffuse.ktx2"),
-            specular_map: assets.load("environment_maps/voortrekker_interior_1k_specular.ktx2"),
-            intensity: 2000.0,
-            ..default()
-        },
-        CameraController::default(),
-        SteamAudioListener,
+        Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        Transform::from_xyz(0.0, 0.0, -4.0),
+        MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC),
     ));
+
+    // The sample player uses Steam Audio through SteamAudioSamplePlayer
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
         SteamAudioSamplePlayer::default(),
-        Transform::from_xyz(0.0, 1.0, 2.0),
-        PointLight::default(),
+        Transform::from_xyz(6.0, 0.0, 0.0),
+        Mesh3d(meshes.add(Sphere::new(0.5))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
     ));
+
     commands.spawn((
         DirectionalLight::default(),
-        Transform::default().looking_to(Vec3::new(0.5, -1.0, 0.3), Vec3::Y),
+        Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
     ));
 }
 
-fn set_material(
-    ready: On<SceneInstanceReady>,
-    children: Query<&Children>,
-    meshes: Query<(), With<Mesh3d>>,
-    mut commands: Commands,
+// Rotate the sample player around the camera to demonstrate Steam Audio's capabilities
+fn rotate_audio(
+    mut sample_player: Single<&mut Transform, With<SamplePlayer>>,
+    camera: Single<&Transform, (With<Camera>, Without<SamplePlayer>)>,
+    time: Res<Time>,
 ) {
-    for child in children.iter_descendants(ready.entity) {
-        if meshes.contains(child) {
-            commands
-                .entity(child)
-                .insert(MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC));
-        }
-    }
+    let seconds_for_one_orbit = 8.0;
+    sample_player.rotate_around(
+        camera.translation,
+        Quat::from_rotation_y(TAU / seconds_for_one_orbit * time.delta_secs()),
+    );
 }
