@@ -105,20 +105,17 @@ fn update_simulation(
         sim_settings.to_audionimbus_simulation_shared_inputs(listener_orientation, *quality);
 
     if synchro.complete.load(Ordering::SeqCst) {
-        // TODO: only do this if necessary
+        // todo: only do this when needed
         root.commit();
-        {
-            let mut simulator = simulator.write().unwrap();
-            simulator.set_scene(&root);
-            simulator.commit();
-        }
+        simulator.write().unwrap().commit();
     }
 
     decode_node.listener_orientation = listener_orientation;
 
-    for (mut source, transform, _effects) in nodes.iter_mut() {
-        let orientation =
-            AudionimbusCoordinateSystem::from_bevy_transform(transform.compute_transform());
+    // set inputs
+    for (mut source, transform, effects) in nodes.iter_mut() {
+        let transform = transform.compute_transform();
+        let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
 
         source.set_inputs(
             audionimbus::SimulationFlags::DIRECT,
@@ -143,87 +140,87 @@ fn update_simulation(
                 pathing_simulation: None,
             },
         );
+
+        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
+
+        node.source_position = transform.translation;
+        node.listener_position = listener_transform.translation;
     }
-    {
-        let simulator = simulator.read().unwrap();
-        simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
 
-        simulator.run_direct();
+    let simulator = simulator.read().unwrap();
+    simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
 
-        for (mut source, transform, effects) in nodes.iter_mut() {
-            let transform = transform.compute_transform();
-            let source_position = transform.translation;
+    simulator.run_direct();
 
-            let simulation_outputs = source.get_outputs(audionimbus::SimulationFlags::DIRECT);
+    // read outputs
+    for (mut source, _transform, effects) in nodes.iter_mut() {
+        let simulation_outputs = source.get_outputs(audionimbus::SimulationFlags::DIRECT);
 
-            let (mut node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-            events.push(NodeEventType::custom(SimulationOutputEvent(
-                simulation_outputs,
-            )));
-            node.source_position = source_position;
-            node.listener_position = listener_transform.translation;
-        }
+        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
+        events.push(NodeEventType::custom(SimulationOutputEvent(
+            simulation_outputs,
+        )));
+    }
 
-        let Some(timer) = sim_settings
-            .reflection_and_pathing_simulation_timer
-            .as_mut()
-        else {
-            return Ok(());
-        };
-        timer.tick(time.delta());
-        if !timer.is_finished() {
-            // Not yet time to kick off expensive simulation
-            return Ok(());
-        }
-        if !synchro.complete.load(Ordering::SeqCst) {
-            // It's time, but the previous simulation is still running!
-            return Ok(());
-        }
+    let Some(timer) = sim_settings
+        .reflection_and_pathing_simulation_timer
+        .as_mut()
+    else {
+        // User doesn't want any reflection or pathing simulation
+        return Ok(());
+    };
+    timer.tick(time.delta());
+    if !timer.is_finished() {
+        // Not yet time to kick off expensive simulation
+        return Ok(());
+    }
+    if !synchro.complete.load(Ordering::SeqCst) {
+        // It's time, but the previous simulation is still running!
+        return Ok(());
+    }
 
-        // The previous simulation is complete, so we can start the next one
-        synchro.complete.store(false, Ordering::SeqCst);
-        timer.reset();
+    // The previous simulation is complete, so we can start the next one
 
-        // Read the newest outputs
-        let reverb_simulation_outputs = listener_source.get_outputs(
-            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-        );
+    // Read the newest outputs
+    let reverb_simulation_outputs = listener_source.get_outputs(
+        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+    );
 
-        reverb_data.push(NodeEventType::custom(
-            reverb_simulation_outputs.reflections().into_inner(),
-        ));
+    reverb_data.push(NodeEventType::custom(
+        reverb_simulation_outputs.reflections().into_inner(),
+    ));
 
-        // set new inputs
-
-        simulator.set_shared_inputs(
-            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-            &shared_inputs,
-        );
-        // Listener source to simulate reverb.
-        listener_source.set_inputs(
-            audionimbus::SimulationFlags::REFLECTIONS,
-            audionimbus::SimulationInputs {
-                source: listener_orientation.to_audionimbus(),
-                direct_simulation: Some(audionimbus::DirectSimulationParameters {
-                    distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
-                    air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-                    directivity: Some(audionimbus::Directivity::default()),
-                    occlusion: Some(audionimbus::Occlusion {
-                        transmission: Some(audionimbus::TransmissionParameters {
-                            num_transmission_rays: 8,
-                        }),
-                        algorithm: audionimbus::OcclusionAlgorithm::Raycast,
+    // set new inputs
+    simulator.set_shared_inputs(
+        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+        &shared_inputs,
+    );
+    // Listener source to simulate reverb.
+    listener_source.set_inputs(
+        audionimbus::SimulationFlags::REFLECTIONS,
+        audionimbus::SimulationInputs {
+            source: listener_orientation.to_audionimbus(),
+            direct_simulation: Some(audionimbus::DirectSimulationParameters {
+                distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
+                air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
+                directivity: Some(audionimbus::Directivity::default()),
+                occlusion: Some(audionimbus::Occlusion {
+                    transmission: Some(audionimbus::TransmissionParameters {
+                        num_transmission_rays: 8,
                     }),
+                    algorithm: audionimbus::OcclusionAlgorithm::Raycast,
                 }),
-                reflections_simulation: Some(
-                    audionimbus::ReflectionsSimulationParameters::Convolution {
-                        baked_data_identifier: None,
-                    },
-                ),
-                pathing_simulation: None,
-            },
-        );
-    }
+            }),
+            reflections_simulation: Some(
+                audionimbus::ReflectionsSimulationParameters::Convolution {
+                    baked_data_identifier: None,
+                },
+            ),
+            pathing_simulation: None,
+        },
+    );
+    synchro.complete.store(false, Ordering::SeqCst);
+    timer.reset();
     synchro.sender.send(())?;
 
     Ok(())
@@ -242,6 +239,7 @@ fn create_simulator(
     create: On<CreateSimulator>,
     mut commands: Commands,
     quality: Res<SteamAudioQuality>,
+    root: Res<SteamAudioRootScene>,
 ) -> Result {
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
@@ -252,6 +250,7 @@ fn create_simulator(
     .with_reflections(quality.reflections.to_audionimbus(quality.order))
     .with_pathing(quality.pathing.into())
     .try_build(&STEAM_AUDIO_CONTEXT)?;
+    simulator.set_scene(&root);
 
     let listener_source = audionimbus::Source::try_new(
         &simulator,

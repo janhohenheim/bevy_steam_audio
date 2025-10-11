@@ -7,16 +7,16 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct SteamAudioRootScene(audionimbus::Scene);
+pub struct SteamAudioRootScene(pub audionimbus::Scene);
 
 impl Default for SteamAudioRootScene {
     fn default() -> Self {
-        Self(
-            audionimbus::Scene::try_new(
-                &STEAM_AUDIO_CONTEXT,
-                &audionimbus::SceneSettings::default(),
-            )
-            .unwrap(),
+        let mut scene = audionimbus::Scene::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &audionimbus::SceneSettings::default(),
         )
+        .unwrap();
+        scene.commit();
+        Self(scene)
     }
 }
