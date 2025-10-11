@@ -102,7 +102,7 @@ fn recreate_simulator_on_settings_change(
     mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
     let Some(prev_quality) = *prev_quality else {
-        *prev_quality = Some(quality.clone());
+        *prev_quality = Some(*quality);
         return;
     };
 
@@ -135,7 +135,6 @@ fn create_simulator(
     quality: Res<SteamAudioQuality>,
     root: Res<SteamAudioRootScene>,
 ) -> Result {
-    error!("create_simulator");
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),

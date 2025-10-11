@@ -57,9 +57,12 @@ fn setup(
         SteamAudioSamplePlayer {
             flags: SimulationFlags::DIRECT,
         },
-        // The `SteamAudioNode` tunes the parameters used when processing the audio
+        // The `SteamAudioNode` tunes the parameters used when processing the audio.
+        // For example, let's only listen to the reflected sound.
         sample_effects![SteamAudioNode {
-            direct_gain: 3.0,
+            direct_gain: 0.0,
+            reverb_gain: 0.0,
+            reflection_gain: 3.0,
             ..default()
         }],
     ));

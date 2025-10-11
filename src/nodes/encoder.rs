@@ -380,7 +380,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
                 impulse_response_size: 2 * settings.sampling_rate,
-                num_channels: num_channels,
+                num_channels,
             },
         )
         .unwrap();
@@ -389,15 +389,14 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
                 impulse_response_size: 2 * settings.sampling_rate,
-                num_channels: num_channels,
+                num_channels,
             },
         )
         .unwrap();
         self.output_buffer = self
             .output_buffer
             .drain(..)
-            .enumerate()
-            .map(|(i, old)| {
+            .map(|old| {
                 let mut vec = Vec::with_capacity(stream_info.max_block_frames.get() as usize * 2);
                 vec.extend(old);
                 vec

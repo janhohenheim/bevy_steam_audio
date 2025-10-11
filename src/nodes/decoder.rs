@@ -238,7 +238,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
     fn new_stream(
         &mut self,
         stream_info: &firewheel::StreamInfo,
-        context: &mut firewheel::node::ProcStreamCtx,
+        _context: &mut firewheel::node::ProcStreamCtx,
     ) {
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
