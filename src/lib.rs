@@ -102,7 +102,7 @@ pub struct SteamAudioSamplePlayer {
 impl Default for SteamAudioSamplePlayer {
     fn default() -> Self {
         Self {
-            flags: audionimbus::SimulationFlags::REFLECTIONS,
+            flags: audionimbus::SimulationFlags::all(),
         }
     }
 }
