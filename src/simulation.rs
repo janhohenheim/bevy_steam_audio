@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
-    nodes::{decoder::AmbisonicDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode},
+    nodes::{decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode},
     prelude::*,
     scene::SteamAudioRootScene,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},
@@ -92,7 +92,7 @@ fn update_simulation(
     mut root: ResMut<SteamAudioRootScene>,
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut decode_node: Single<&mut AmbisonicDecodeNode>,
+    mut decode_node: Single<&mut SteamAudioDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
     time: Res<Time>,
 ) -> Result {

@@ -22,7 +22,7 @@ struct SteamAudioDecodeBus;
 
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     // we only need one decoder
-    commands.spawn((SteamAudioDecodeBus, AmbisonicDecodeNode::default()));
+    commands.spawn((SteamAudioDecodeBus, SteamAudioDecodeNode::default()));
     commands.spawn(ReverbDataNode);
 
     // Copy-paste this part if you want to set up your own pool!

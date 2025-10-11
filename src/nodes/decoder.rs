@@ -24,19 +24,19 @@ use firewheel::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.register_node::<AmbisonicDecodeNode>();
+    app.register_node::<SteamAudioDecodeNode>();
 }
 
 #[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
-pub struct AmbisonicDecodeNode {
+pub struct SteamAudioDecodeNode {
     pub(crate) listener_orientation: AudionimbusCoordinateSystem,
 }
 
 #[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Default, Component, Reflect)]
 #[reflect(Component)]
 #[component(on_add = on_add_decode_node_config)]
-pub struct AmbisonicDecodeNodeConfig {
+pub struct SteamAudioDecodeNodeConfig {
     pub(crate) order: u32,
     pub(crate) frame_size: u32,
 }
@@ -44,19 +44,19 @@ pub struct AmbisonicDecodeNodeConfig {
 fn on_add_decode_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let quality = *world.resource::<SteamAudioQuality>();
     let mut entity = world.entity_mut(ctx.entity);
-    let mut config = entity.get_mut::<AmbisonicDecodeNodeConfig>().unwrap();
+    let mut config = entity.get_mut::<SteamAudioDecodeNodeConfig>().unwrap();
     config.order = quality.order;
     config.frame_size = quality.frame_size;
 }
 
-impl AmbisonicDecodeNodeConfig {
+impl SteamAudioDecodeNodeConfig {
     pub(crate) fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
     }
 }
 
-impl AudioNode for AmbisonicDecodeNode {
-    type Configuration = AmbisonicDecodeNodeConfig;
+impl AudioNode for SteamAudioDecodeNode {
+    type Configuration = SteamAudioDecodeNodeConfig;
 
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
@@ -87,7 +87,7 @@ impl AudioNode for AmbisonicDecodeNode {
         )
         .unwrap();
 
-        AmbisonicDecodeProcessor {
+        SteamAudioDecodeProcessor {
             params: self.clone(),
             hrtf: hrtf.clone(),
             ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect::try_new(
@@ -117,8 +117,8 @@ impl AudioNode for AmbisonicDecodeNode {
     }
 }
 
-struct AmbisonicDecodeProcessor {
-    params: AmbisonicDecodeNode,
+struct SteamAudioDecodeProcessor {
+    params: SteamAudioDecodeNode,
     hrtf: audionimbus::Hrtf,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
     input_buffer: Vec<Vec<f32>>,
@@ -132,7 +132,7 @@ struct AmbisonicDecodeProcessor {
     mix_ptrs: ChannelPtrs,
 }
 
-impl AudioNodeProcessor for AmbisonicDecodeProcessor {
+impl AudioNodeProcessor for SteamAudioDecodeProcessor {
     fn process(
         &mut self,
         proc_info: &ProcInfo,
@@ -140,7 +140,7 @@ impl AudioNodeProcessor for AmbisonicDecodeProcessor {
         events: &mut ProcEvents,
         _: &mut ProcExtra,
     ) -> ProcessStatus {
-        for patch in events.drain_patches::<AmbisonicDecodeNode>() {
+        for patch in events.drain_patches::<SteamAudioDecodeNode>() {
             Patch::apply(&mut self.params, patch);
         }
 

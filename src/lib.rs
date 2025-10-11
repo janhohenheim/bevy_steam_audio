@@ -12,6 +12,8 @@ mod wrapper;
 pub use audionimbus;
 pub use audionimbus::Material as SteamAudioMaterial;
 
+use crate::nodes::SteamAudioPool;
+
 pub mod settings;
 
 pub mod prelude {
@@ -31,7 +33,7 @@ pub mod prelude {
     pub(crate) use bevy_utils::prelude::*;
 
     pub use crate::{
-        SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, nodes::SteamAudioPool,
+        SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, SteamAudioSamplePlayer,
     };
 }
 

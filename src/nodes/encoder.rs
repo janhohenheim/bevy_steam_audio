@@ -54,7 +54,7 @@ impl Default for SteamAudioNode {
 #[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Default, Reflect)]
 #[reflect(Component)]
 #[component(on_add = on_add_audionimbus_node_config)]
-pub struct AudionimbusNodeConfig {
+pub struct SteamAUdioNodeConfig {
     pub(crate) order: u32,
     pub(crate) frame_size: u32,
 }
@@ -62,12 +62,12 @@ pub struct AudionimbusNodeConfig {
 fn on_add_audionimbus_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let quality = *world.resource::<SteamAudioQuality>();
     let mut entity = world.entity_mut(ctx.entity);
-    let mut config = entity.get_mut::<AudionimbusNodeConfig>().unwrap();
+    let mut config = entity.get_mut::<SteamAUdioNodeConfig>().unwrap();
     config.order = quality.order;
     config.frame_size = quality.frame_size;
 }
 
-impl AudionimbusNodeConfig {
+impl SteamAUdioNodeConfig {
     #[inline]
     fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
@@ -75,11 +75,11 @@ impl AudionimbusNodeConfig {
 }
 
 impl AudioNode for SteamAudioNode {
-    type Configuration = AudionimbusNodeConfig;
+    type Configuration = SteamAUdioNodeConfig;
 
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
-            .debug_name("ambisonic node")
+            .debug_name("Steam Audio node")
             // 1 -> 9
             .channel_config(ChannelConfig {
                 num_inputs: ChannelCount::MONO,
@@ -96,7 +96,7 @@ impl AudioNode for SteamAudioNode {
             sampling_rate: cx.stream_info.sample_rate.get(),
             frame_size: config.frame_size,
         };
-        AudionimbusProcessor {
+        SteamAudioProcessor {
             params: self.clone(),
             frame_size: config.frame_size,
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
@@ -158,7 +158,7 @@ impl AudioNode for SteamAudioNode {
     }
 }
 
-struct AudionimbusProcessor {
+struct SteamAudioProcessor {
     order: u32,
     frame_size: u32,
     params: SteamAudioNode,
@@ -181,7 +181,7 @@ struct AudionimbusProcessor {
     direct_container: Vec<f32>,
 }
 
-impl AudioNodeProcessor for AudionimbusProcessor {
+impl AudioNodeProcessor for SteamAudioProcessor {
     fn process(
         &mut self,
         proc_info: &ProcInfo,
