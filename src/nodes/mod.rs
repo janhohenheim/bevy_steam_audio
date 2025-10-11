@@ -18,7 +18,7 @@ pub(super) fn plugin(app: &mut App) {
 pub struct SteamAudioPool;
 
 #[derive(NodeLabel, PartialEq, Eq, Debug, Hash, Clone)]
-struct SteamAudioDecodeBus;
+pub struct SteamAudioDecodeBus;
 
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     // we only need one decoder

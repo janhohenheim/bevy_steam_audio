@@ -35,8 +35,8 @@ pub struct SteamAudioNode {
     pub direct_gain: f32,
     pub reflection_gain: f32,
     pub reverb_gain: f32,
-    pub(crate) source_position: Vec3,
-    pub(crate) listener_position: Vec3,
+    pub source_position: Vec3,
+    pub listener_position: Vec3,
 }
 
 impl Default for SteamAudioNode {
@@ -313,12 +313,12 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         }
 
         if self.input_buffer.capacity() > self.frame_size as usize {
-            error!("allocated input_buffer in processor, this is a bug");
+            error_once!("allocated input_buffer in processor, this is a bug");
         }
 
         for buff in &self.output_buffer {
             if buff.capacity() > self.max_block_frames.get() as usize * 2 {
-                error!("allocated output_buffer in processor, this is a bug");
+                error_once!("allocated output_buffer in processor, this is a bug");
             }
         }
 

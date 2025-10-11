@@ -209,13 +209,13 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
 
         for buff in &self.input_buffer {
             if buff.capacity() > self.frame_size as usize {
-                error!("allocated input_buffer in processor, this is a bug");
+                error_once!("allocated input_buffer in processor, this is a bug");
             }
         }
 
         for buff in &self.output_buffer {
             if buff.capacity() > self.max_block_frames.get() as usize * 2 {
-                error!("allocated output_buffer in processor, this is a bug");
+                error_once!("allocated output_buffer in processor, this is a bug");
             }
         }
 
