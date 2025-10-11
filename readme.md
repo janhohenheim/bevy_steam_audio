@@ -5,8 +5,6 @@ WIP of an integration between Bevy and Steam Audio via audionimbus. See https://
 ## Usage
 
 ```rust
-use std::f32::consts::TAU;
-
 use bevy::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
@@ -22,11 +20,11 @@ fn main() {
             // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
             // Steam Audio still needs some scene backend to know how to build its 3D scene.
-            // Mesh3dBackendPlugin does this by simply using all `Mesh3d`s.
+            // Mesh3dBackendPlugin does this by using all entities that hold both
+            // `Mesh3d` and `MeshMaterial3d`.
             Mesh3dBackendPlugin::default(),
         ))
         .add_systems(Startup, setup)
-        .add_systems(Update, rotate_audio)
         .run();
 }
 
@@ -60,19 +58,6 @@ fn setup(
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
     ));
-}
-
-// Rotate the sample player around the camera to demonstrate Steam Audio's capabilities
-fn rotate_audio(
-    mut sample_player: Single<&mut Transform, With<SamplePlayer>>,
-    camera: Single<&Transform, (With<Camera>, Without<SamplePlayer>)>,
-    time: Res<Time>,
-) {
-    let seconds_for_one_orbit = 8.0;
-    sample_player.rotate_around(
-        camera.translation,
-        Quat::from_rotation_y(TAU / seconds_for_one_orbit * time.delta_secs()),
-    );
 }
 ```
 
