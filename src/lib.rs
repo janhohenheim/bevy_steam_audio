@@ -12,8 +12,6 @@ mod wrapper;
 pub use audionimbus;
 pub use audionimbus::Material as SteamAudioMaterial;
 
-use crate::nodes::SteamAudioPool;
-
 pub mod settings;
 
 pub mod prelude {

@@ -1,7 +1,6 @@
 use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
-    SteamAudioSamplePlayer,
     prelude::*,
     scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
 };
