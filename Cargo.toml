@@ -30,6 +30,7 @@ bevy_asset = { version = "0.17", default-features = false }
 bevy_mesh = { version = "0.17", default-features = false }
 bevy_time = { version = "0.17", default-features = false }
 bevy_tasks = { version = "0.17", default-features = false }
+bevy_camera = { version = "0.17", default-features = false }
 
 itertools = "0.14.0"
 firewheel = { version = "0.8.0-rc.1", default-features = false, features = ["std"] }

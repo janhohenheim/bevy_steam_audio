@@ -13,6 +13,7 @@ use crate::{
         decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode,
     },
     prelude::*,
+    probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
     settings::{SteamAudioEnabled, SteamAudioQuality},
     sources::{AudionimbusSource, ListenerSource},
@@ -220,6 +221,7 @@ fn update_simulation(
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut SteamAudioDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
+    probes: Res<SteamAudioProbeBatch>,
     time: Res<Time>,
 ) -> Result {
     if !enabled.enabled {
@@ -350,7 +352,16 @@ fn update_simulation(
                     baked_data_identifier: None,
                 },
             ),
-            pathing_simulation: None,
+            pathing_simulation: Some(audionimbus::PathingSimulationParameters {
+                pathing_probes: &probes,
+                visibility_radius: 1.0,
+                visibility_threshold: 0.1,
+                visibility_range: 1000.0,
+                pathing_order: quality.order,
+                enable_validation: true,
+                find_alternate_paths: true,
+                deviation: audionimbus::DeviationModel::Default,
+            }),
         },
     );
     for (mut source, source_settings, transform, _effects) in nodes.iter_mut() {

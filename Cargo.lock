@@ -1372,6 +1372,7 @@ dependencies = [
  "bevy",
  "bevy_app",
  "bevy_asset",
+ "bevy_camera",
  "bevy_derive",
  "bevy_ecs",
  "bevy_log",

@@ -75,4 +75,5 @@ fn set_material(
                 .insert(MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC));
         }
     }
+    commands.trigger(GenerateProbes::default());
 }

@@ -6,6 +6,7 @@ use bevy_seedling::sample::SamplePlayer;
 use prelude::*;
 
 pub mod nodes;
+pub mod probes;
 pub mod scene;
 pub mod simulation;
 pub mod sources;
@@ -36,6 +37,7 @@ pub mod prelude {
         nodes::SteamAudioDecodeBus,
         nodes::SteamAudioNode,
         nodes::SteamAudioPool,
+        probes::GenerateProbes,
         settings::{
             SteamAudioDirectQuality, SteamAudioPathingQuality, SteamAudioQuality,
             SteamAudioReflectionsQuality,
@@ -73,6 +75,7 @@ impl Plugin for SteamAudioPlugin {
             scene::plugin,
             settings::plugin,
             sources::plugin,
+            probes::plugin,
         ));
     }
 }
