@@ -201,7 +201,7 @@ impl SteamAudioProcessor {
         .map(|b| b.capacity())
         .chain(iter::once(self.input_buffer.capacity()))
         .chain(iter::once(self.output_buffer.capacity()))
-        .chain(self.output_buffer.iter().map(|b| b.capacity()))
+        .chain(self.output_buffer.iter().map(Vec::capacity))
         .sum()
     }
 

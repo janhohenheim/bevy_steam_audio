@@ -144,8 +144,8 @@ impl SteamAudioDecodeProcessor {
             .iter()
             .map(|b| b.capacity())
             .chain(iter::once(self.input_buffer.capacity()))
-            .chain(self.input_buffer.iter().map(|b| b.capacity()))
-            .chain(self.output_buffer.iter().map(|b| b.capacity()))
+            .chain(self.input_buffer.iter().map(Vec::capacity))
+            .chain(self.output_buffer.iter().map(Vec::capacity))
             .sum()
     }
 
