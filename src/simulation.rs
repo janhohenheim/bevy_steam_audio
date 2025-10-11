@@ -132,11 +132,7 @@ fn update_simulation(
                         algorithm: audionimbus::OcclusionAlgorithm::Raycast,
                     }),
                 }),
-                reflections_simulation: Some(
-                    audionimbus::ReflectionsSimulationParameters::Convolution {
-                        baked_data_identifier: None,
-                    },
-                ),
+                reflections_simulation: None,
                 pathing_simulation: None,
             },
         );
@@ -195,22 +191,12 @@ fn update_simulation(
         audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
         &shared_inputs,
     );
-    // Listener source to simulate reverb.
+
     listener_source.set_inputs(
         audionimbus::SimulationFlags::REFLECTIONS,
         audionimbus::SimulationInputs {
             source: listener_orientation.to_audionimbus(),
-            direct_simulation: Some(audionimbus::DirectSimulationParameters {
-                distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
-                air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-                directivity: Some(audionimbus::Directivity::default()),
-                occlusion: Some(audionimbus::Occlusion {
-                    transmission: Some(audionimbus::TransmissionParameters {
-                        num_transmission_rays: 8,
-                    }),
-                    algorithm: audionimbus::OcclusionAlgorithm::Raycast,
-                }),
-            }),
+            direct_simulation: None,
             reflections_simulation: Some(
                 audionimbus::ReflectionsSimulationParameters::Convolution {
                     baked_data_identifier: None,
@@ -219,6 +205,25 @@ fn update_simulation(
             pathing_simulation: None,
         },
     );
+    for (mut source, transform, _effects) in nodes.iter_mut() {
+        let transform = transform.compute_transform();
+        let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
+
+        source.set_inputs(
+            audionimbus::SimulationFlags::REFLECTIONS,
+            audionimbus::SimulationInputs {
+                source: orientation.to_audionimbus(),
+                direct_simulation: None,
+                reflections_simulation: Some(
+                    audionimbus::ReflectionsSimulationParameters::Convolution {
+                        baked_data_identifier: None,
+                    },
+                ),
+                pathing_simulation: None,
+            },
+        );
+    }
+
     synchro.complete.store(false, Ordering::SeqCst);
     timer.reset();
     synchro.sender.send(())?;
