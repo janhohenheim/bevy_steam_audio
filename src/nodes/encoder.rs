@@ -37,6 +37,7 @@ pub struct SteamAudioNode {
     pub pathing_gain: f32,
     pub source_position: Vec3,
     pub listener_position: AudionimbusCoordinateSystem,
+    pub pathing_available: bool,
 }
 
 impl Default for SteamAudioNode {
@@ -48,6 +49,7 @@ impl Default for SteamAudioNode {
             pathing_gain: 0.5,
             source_position: Vec3::ZERO,
             listener_position: AudionimbusCoordinateSystem::default(),
+            pathing_available: false,
         }
     }
 }
@@ -387,10 +389,13 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             )
             .unwrap();
 
-            let _effect_state =
-                self.pathing_effect
-                    .apply(pathing_effect_params, &input_buffer, &pathing_buffer);
-
+            if self.params.pathing_available {
+                let _effect_state = self.pathing_effect.apply(
+                    pathing_effect_params,
+                    &input_buffer,
+                    &pathing_buffer,
+                );
+            }
             izip!(
                 ambisonics_encode_buffer.channels(),
                 reflection_buffer.channels(),

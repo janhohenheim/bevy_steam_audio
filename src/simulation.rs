@@ -155,14 +155,10 @@ fn create_simulator(
     )?;
     simulator.add_source(&listener_source);
 
-    let probe_batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
-    simulator.add_probe_batch(&probe_batch);
-
     simulator.commit();
 
     let simulator = Arc::new(RwLock::new(simulator.clone()));
     commands.insert_resource(ListenerSource(listener_source));
-    commands.insert_resource(SteamAudioProbeBatch(probe_batch));
     commands.insert_resource(AudionimbusSimulator {
         simulator: simulator.clone(),
         sampling_rate: create.sampling_rate,
@@ -200,7 +196,7 @@ fn create_simulator(
 fn migrate_simulator(
     simulator: Res<AudionimbusSimulator>,
     sources: Query<&AudionimbusSource>,
-    probe_batch: Res<SteamAudioProbeBatch>,
+    probe_batch: Option<Res<SteamAudioProbeBatch>>,
     root: Res<SteamAudioRootScene>,
 ) {
     if !simulator.is_changed() {
@@ -211,7 +207,9 @@ fn migrate_simulator(
         simulator.add_source(source);
     }
     simulator.set_scene(&root);
-    simulator.add_probe_batch(&probe_batch);
+    if let Some(probe_batch) = probe_batch {
+        simulator.add_probe_batch(&probe_batch);
+    }
     simulator.commit();
 }
 
@@ -233,7 +231,7 @@ fn update_simulation(
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut SteamAudioDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
-    probes: Res<SteamAudioProbeBatch>,
+    probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
 ) -> Result {
     if !enabled.enabled {
@@ -246,7 +244,7 @@ fn update_simulation(
     if synchro.complete.load(Ordering::SeqCst) {
         // todo: only do this when needed
         root.commit();
-        //simulator.write().unwrap().commit();
+        simulator.write().unwrap().commit();
     }
 
     decode_node.listener_orientation = listener_orientation;
@@ -355,7 +353,7 @@ fn update_simulation(
     );
 
     listener_source.set_inputs(
-        audionimbus::SimulationFlags::REFLECTIONS,
+        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
         audionimbus::SimulationInputs {
             source: listener_orientation.to_audionimbus(),
             direct_simulation: None,
@@ -364,19 +362,10 @@ fn update_simulation(
                     baked_data_identifier: None,
                 },
             ),
-            pathing_simulation: Some(audionimbus::PathingSimulationParameters {
-                pathing_probes: &probes,
-                visibility_radius: 1.0,
-                visibility_threshold: 0.1,
-                visibility_range: 1000.0,
-                pathing_order: quality.order,
-                enable_validation: true,
-                find_alternate_paths: true,
-                deviation: audionimbus::DeviationModel::Default,
-            }),
+            pathing_simulation: None,
         },
     );
-    for (mut source, source_settings, transform, _effects) in nodes.iter_mut() {
+    for (mut source, source_settings, transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
         flags.remove(audionimbus::SimulationFlags::DIRECT);
         if flags.is_empty() {
@@ -395,9 +384,22 @@ fn update_simulation(
                         baked_data_identifier: None,
                     },
                 ),
-                pathing_simulation: None,
+                pathing_simulation: probes.as_ref().map(|probes| {
+                    audionimbus::PathingSimulationParameters {
+                        pathing_probes: &probes,
+                        visibility_radius: 1.0,
+                        visibility_threshold: 0.1,
+                        visibility_range: 1000.0,
+                        pathing_order: quality.order,
+                        enable_validation: true,
+                        find_alternate_paths: true,
+                        deviation: audionimbus::DeviationModel::Default,
+                    }
+                }),
             },
         );
+        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
+        node.pathing_available = probes.is_some();
     }
 
     synchro.complete.store(false, Ordering::SeqCst);

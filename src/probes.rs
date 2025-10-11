@@ -1,7 +1,10 @@
 use bevy_camera::primitives::Aabb;
 use bevy_math::bounding::Aabb3d;
 
-use crate::{prelude::*, scene::SteamAudioRootScene, wrapper::ToSteamAudioTransform};
+use crate::{
+    prelude::*, scene::SteamAudioRootScene, simulation::AudionimbusSimulator,
+    wrapper::ToSteamAudioTransform,
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(generate_probes);
@@ -31,7 +34,8 @@ fn generate_probes(
     generate: On<GenerateProbes>,
     aabbs: Query<&Aabb>,
     root: Res<SteamAudioRootScene>,
-    mut batch: ResMut<SteamAudioProbeBatch>,
+    mut commands: Commands,
+    simulator: Res<AudionimbusSimulator>,
 ) -> Result {
     let aabb = if let Some(aabb) = generate.aabb {
         aabb
@@ -58,6 +62,7 @@ fn generate_probes(
     };
     let mut array = audionimbus::ProbeArray::try_new(&STEAM_AUDIO_CONTEXT)?;
     array.generate_probes(&root, &params);
+    let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
     batch.add_probe_array(&array);
     batch.commit();
 
@@ -87,6 +92,8 @@ fn generate_probes(
             user_data: ctx,
         }),
     );
+    simulator.write().unwrap().add_probe_batch(&batch);
+    commands.insert_resource(SteamAudioProbeBatch(batch));
 
     Ok(())
 }
