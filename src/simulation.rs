@@ -7,11 +7,8 @@ use std::{
 };
 
 use crate::{
-    STEAM_AUDIO_CONTEXT, SteamAudioListener, SteamAudioSamplePlayer,
-    nodes::{
-        SteamAudioPool, decoder::AmbisonicDecodeNode, encoder::SteamAudioNode,
-        reverb::ReverbDataNode,
-    },
+    STEAM_AUDIO_CONTEXT, SteamAudioListener,
+    nodes::{decoder::AmbisonicDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode},
     prelude::*,
     scene::SteamAudioRootScene,
     settings::{SteamAudioQuality, SteamAudioSimulationSettings},
