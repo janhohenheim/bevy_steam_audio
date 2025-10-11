@@ -132,6 +132,35 @@ struct SteamAudioDecodeProcessor {
     mix_ptrs: ChannelPtrs,
 }
 
+impl SteamAudioDecodeProcessor {
+    #[inline]
+    fn num_channels(&self) -> u32 {
+        order_to_num_channels(self.order)
+    }
+
+    #[inline]
+    fn total_capacity(&self) -> usize {
+        [&self.mix_container, &self.staging_container]
+            .iter()
+            .map(|b| b.capacity())
+            .chain(iter::once(self.input_buffer.capacity()))
+            .chain(self.input_buffer.iter().map(|b| b.capacity()))
+            .chain(self.output_buffer.iter().map(|b| b.capacity()))
+            .sum()
+    }
+
+    #[inline]
+    fn validate_capacity(&self, start_capacity: usize) {
+        let end_capacity = self.total_capacity();
+        if start_capacity != end_capacity {
+            warn!(
+                "Allocated in SteamAudioDecodeProcessor. Capacity mismatch: {} != {}",
+                start_capacity, end_capacity
+            );
+        }
+    }
+}
+
 impl AudioNodeProcessor for SteamAudioDecodeProcessor {
     fn process(
         &mut self,
@@ -140,11 +169,13 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         events: &mut ProcEvents,
         _: &mut ProcExtra,
     ) -> ProcessStatus {
+        let start_capacity = self.total_capacity();
         for patch in events.drain_patches::<SteamAudioDecodeNode>() {
             Patch::apply(&mut self.params, patch);
         }
 
         if proc_info.in_silence_mask.all_channels_silent(inputs.len()) {
+            self.validate_capacity(start_capacity);
             return ProcessStatus::ClearAllOutputs;
         }
 
@@ -156,7 +187,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
                 continue;
             }
             // Buffer full
-            let channels = order_to_num_channels(self.order);
+            let channels = self.num_channels();
 
             for channel in 0..channels as usize {
                 self.mix_container[(channel * self.frame_size as usize)
@@ -207,20 +238,9 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             }
         }
 
-        for buff in &self.input_buffer {
-            if buff.capacity() > self.frame_size as usize {
-                error_once!("allocated input_buffer in processor, this is a bug");
-            }
-        }
-
-        for buff in &self.output_buffer {
-            if buff.capacity() > self.max_block_frames.get() as usize * 2 {
-                error_once!("allocated output_buffer in processor, this is a bug");
-            }
-        }
-
         if !self.started_draining {
             if (self.output_buffer[0].len() as f32) < self.max_block_frames.get() as f32 * 1.5 {
+                self.validate_capacity(start_capacity);
                 return ProcessStatus::ClearAllOutputs;
             }
             self.started_draining = true;
@@ -232,6 +252,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
                 dst[i] = out;
             }
         }
+        self.validate_capacity(start_capacity);
         ProcessStatus::OutputsModified
     }
 

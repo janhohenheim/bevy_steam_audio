@@ -182,6 +182,41 @@ struct SteamAudioProcessor {
     direct_container: Vec<f32>,
 }
 
+impl SteamAudioProcessor {
+    #[inline]
+    fn num_channels(&self) -> u32 {
+        order_to_num_channels(self.order)
+    }
+
+    #[inline]
+    fn total_capacity(&self) -> usize {
+        [
+            &self.ambisonics_encode_container,
+            &self.reflections_container,
+            &self.reverb_container,
+            &self.input_container,
+            &self.direct_container,
+        ]
+        .iter()
+        .map(|b| b.capacity())
+        .chain(iter::once(self.input_buffer.capacity()))
+        .chain(iter::once(self.output_buffer.capacity()))
+        .chain(self.output_buffer.iter().map(|b| b.capacity()))
+        .sum()
+    }
+
+    #[inline]
+    fn validate_capacity(&self, start_capacity: usize) {
+        let end_capacity = self.total_capacity();
+        if start_capacity != end_capacity {
+            warn!(
+                "Allocated in AudioNodeProcessor. Capacity mismatch: {} != {}",
+                start_capacity, end_capacity
+            );
+        }
+    }
+}
+
 impl AudioNodeProcessor for SteamAudioProcessor {
     fn process(
         &mut self,
@@ -190,6 +225,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         events: &mut ProcEvents,
         extra: &mut ProcExtra,
     ) -> ProcessStatus {
+        let start_capacity = self.total_capacity();
         for mut event in events.drain() {
             if let Some(patch) = SteamAudioNode::patch_event(&event) {
                 Patch::apply(&mut self.params, patch);
@@ -230,6 +266,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             )
             else {
                 self.input_buffer.clear();
+                self.validate_capacity(start_capacity);
                 return ProcessStatus::ClearAllOutputs;
             };
 
@@ -327,18 +364,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             self.input_buffer.clear();
         }
 
-        if self.input_buffer.capacity() > self.frame_size as usize {
-            error_once!("allocated input_buffer in processor, this is a bug");
-        }
-
-        for buff in &self.output_buffer {
-            if buff.capacity() > self.max_block_frames.get() as usize * 2 {
-                error_once!("allocated output_buffer in processor, this is a bug");
-            }
-        }
-
         if !self.started_draining {
             if (self.output_buffer[0].len() as f32) < self.max_block_frames.get() as f32 * 1.5 {
+                self.validate_capacity(start_capacity);
                 return ProcessStatus::ClearAllOutputs;
             }
             self.started_draining = true;
@@ -350,6 +378,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 dst[i] = out;
             }
         }
+        self.validate_capacity(start_capacity);
         ProcessStatus::OutputsModified
     }
 
@@ -362,7 +391,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             sampling_rate: stream_info.sample_rate.get(),
             frame_size: self.frame_size,
         };
-        let num_channels = order_to_num_channels(self.order);
 
         self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
@@ -383,7 +411,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
                 impulse_response_size: 2 * settings.sampling_rate,
-                num_channels,
+                num_channels: self.num_channels(),
             },
         )
         .unwrap();
@@ -392,7 +420,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
                 impulse_response_size: 2 * settings.sampling_rate,
-                num_channels,
+                num_channels: self.num_channels(),
             },
         )
         .unwrap();
