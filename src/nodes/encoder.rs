@@ -5,7 +5,6 @@ use crate::{
     nodes::reverb::SharedReverbData,
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
-    simulation::SimulationOutputEvent,
     wrapper::ChannelPtrs,
 };
 
@@ -350,4 +349,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         }
         ProcessStatus::OutputsModified
     }
+}
+
+pub(crate) struct SimulationOutputEvent {
+    pub(crate) flags: audionimbus::SimulationFlags,
+    pub(crate) outputs: audionimbus::SimulationOutputs,
 }

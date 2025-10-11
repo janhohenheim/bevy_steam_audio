@@ -8,7 +8,10 @@ use std::{
 
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
-    nodes::{decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode},
+    nodes::{
+        SimulationOutputEvent, SteamAudioDecodeNodeConfig, SteamAudioNodeConfig,
+        decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode,
+    },
     prelude::*,
     scene::SteamAudioRootScene,
     settings::{SteamAudioEnabled, SteamAudioQuality},
@@ -26,7 +29,7 @@ use crate::wrapper::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        recreate_simulator_on_settings_change
+        (recreate_simulator_on_settings_change, migrate_simulator)
             .in_set(SteamAudioSystems::CreateSimulator)
             .run_if(resource_exists::<AudionimbusSimulator>),
     );
@@ -44,6 +47,30 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(create_simulator)
         .add_observer(create_simulator_on_stream_start)
         .add_observer(create_simulator_on_stream_restart);
+}
+
+#[derive(Event)]
+pub struct SimulatorReady;
+
+#[derive(Resource)]
+struct AsyncSimulationSynchronization {
+    sender: crossbeam_channel::Sender<()>,
+    complete: Arc<AtomicBool>,
+}
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct AudionimbusSimulator {
+    #[deref]
+    pub simulator: Arc<
+        RwLock<
+            audionimbus::Simulator<
+                audionimbus::Direct,
+                audionimbus::Reflections,
+                audionimbus::Pathing,
+            >,
+        >,
+    >,
+    pub sampling_rate: NonZeroU32,
 }
 
 #[derive(Event)]
@@ -69,6 +96,8 @@ fn create_simulator_on_stream_restart(
 fn recreate_simulator_on_settings_change(
     quality: Res<SteamAudioQuality>,
     simulator: Res<AudionimbusSimulator>,
+    mut nodes: Query<&mut SteamAudioNodeConfig>,
+    mut decode_nodes: Query<&mut SteamAudioDecodeNodeConfig>,
     mut commands: Commands,
 ) {
     if quality.is_added() {
@@ -79,6 +108,93 @@ fn recreate_simulator_on_settings_change(
             sampling_rate: simulator.sampling_rate,
         });
     }
+
+    for mut node_config in nodes.iter_mut() {
+        *node_config = SteamAudioNodeConfig {
+            order: quality.order,
+            frame_size: quality.frame_size,
+        }
+    }
+
+    for mut decode_node_config in decode_nodes.iter_mut() {
+        *decode_node_config = SteamAudioDecodeNodeConfig {
+            order: quality.order,
+            frame_size: quality.frame_size,
+        };
+    }
+}
+
+fn create_simulator(
+    create: On<CreateSimulator>,
+    mut commands: Commands,
+    quality: Res<SteamAudioQuality>,
+    root: Res<SteamAudioRootScene>,
+) -> Result {
+    let mut simulator = audionimbus::Simulator::builder(
+        audionimbus::SceneParams::Default,
+        create.sampling_rate.into(),
+        quality.frame_size,
+    )
+    .with_direct(quality.direct.into())
+    .with_reflections(quality.reflections.to_audionimbus(quality.order))
+    .with_pathing(quality.pathing.into())
+    .try_build(&STEAM_AUDIO_CONTEXT)?;
+    simulator.set_scene(&root);
+
+    let listener_source = audionimbus::Source::try_new(
+        &simulator,
+        &audionimbus::SourceSettings {
+            flags: audionimbus::SimulationFlags::REFLECTIONS,
+        },
+    )?;
+    simulator.add_source(&listener_source);
+    simulator.commit();
+
+    let simulator = Arc::new(RwLock::new(simulator.clone()));
+    commands.insert_resource(ListenerSource(listener_source));
+    commands.insert_resource(AudionimbusSimulator {
+        simulator: simulator.clone(),
+        sampling_rate: create.sampling_rate,
+    });
+
+    let simulation_complete = Arc::new(AtomicBool::new(false));
+    let simulation_complete_inner = simulation_complete.clone();
+    let (tx, rx) = crossbeam_channel::unbounded::<()>();
+    commands.insert_resource(AsyncSimulationSynchronization {
+        sender: tx,
+        complete: simulation_complete,
+    });
+
+    let future = async move {
+        loop {
+            simulator.read().unwrap().run_reflections();
+            simulation_complete_inner.store(true, Ordering::Relaxed);
+            if rx.recv().is_err() {
+                // tx dropped because we created a new simulation
+                break;
+            }
+        }
+    };
+    AsyncComputeTaskPool::get().spawn(future).detach();
+
+    commands.trigger(SimulatorReady);
+    Ok(())
+}
+
+fn migrate_simulator(
+    simulator: Res<AudionimbusSimulator>,
+    sources: Query<&AudionimbusSource>,
+    root: Res<SteamAudioRootScene>,
+) {
+    if !simulator.is_changed() {
+        return;
+    }
+    let mut simulator = simulator.write().unwrap();
+    for source in &sources {
+        simulator.add_source(source);
+    }
+    simulator.set_scene(&root);
+    simulator.commit();
 }
 
 /// Inspired by the Unity Steam Audio plugin.
@@ -237,90 +353,4 @@ fn update_simulation(
     synchro.sender.send(())?;
 
     Ok(())
-}
-
-#[derive(Event)]
-pub(crate) struct SimulatorReady;
-
-#[derive(Resource)]
-struct AsyncSimulationSynchronization {
-    sender: crossbeam_channel::Sender<()>,
-    complete: Arc<AtomicBool>,
-}
-
-fn create_simulator(
-    create: On<CreateSimulator>,
-    mut commands: Commands,
-    quality: Res<SteamAudioQuality>,
-    root: Res<SteamAudioRootScene>,
-) -> Result {
-    let mut simulator = audionimbus::Simulator::builder(
-        audionimbus::SceneParams::Default,
-        create.sampling_rate.into(),
-        quality.frame_size,
-    )
-    .with_direct(quality.direct.into())
-    .with_reflections(quality.reflections.to_audionimbus(quality.order))
-    .with_pathing(quality.pathing.into())
-    .try_build(&STEAM_AUDIO_CONTEXT)?;
-    simulator.set_scene(&root);
-
-    let listener_source = audionimbus::Source::try_new(
-        &simulator,
-        &audionimbus::SourceSettings {
-            flags: audionimbus::SimulationFlags::REFLECTIONS,
-        },
-    )?;
-    simulator.add_source(&listener_source);
-    simulator.commit();
-
-    let simulator = Arc::new(RwLock::new(simulator.clone()));
-    commands.insert_resource(ListenerSource(listener_source));
-    commands.insert_resource(AudionimbusSimulator {
-        simulator: simulator.clone(),
-        sampling_rate: create.sampling_rate,
-    });
-
-    let simulation_complete = Arc::new(AtomicBool::new(false));
-    let simulation_complete_inner = simulation_complete.clone();
-    let (tx, rx) = crossbeam_channel::unbounded::<()>();
-    commands.insert_resource(AsyncSimulationSynchronization {
-        sender: tx,
-        complete: simulation_complete,
-    });
-
-    let future = async move {
-        loop {
-            simulator.read().unwrap().run_reflections();
-            simulation_complete_inner.store(true, Ordering::Relaxed);
-            if rx.recv().is_err() {
-                // tx dropped because we created a new simulation
-                break;
-            }
-        }
-    };
-    AsyncComputeTaskPool::get().spawn(future).detach();
-
-    commands.trigger(SimulatorReady);
-    Ok(())
-}
-
-#[derive(Resource, Deref, DerefMut)]
-pub struct AudionimbusSimulator {
-    #[deref]
-    pub simulator: Arc<
-        RwLock<
-            audionimbus::Simulator<
-                audionimbus::Direct,
-                audionimbus::Reflections,
-                audionimbus::Pathing,
-            >,
-        >,
-    >,
-    pub sampling_rate: NonZeroU32,
-}
-
-pub(crate) struct SimulationOutputEvent {
-    pub(crate) flags: audionimbus::SimulationFlags,
-    pub(crate) outputs: audionimbus::SimulationOutputs,
 }
