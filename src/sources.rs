@@ -63,6 +63,7 @@ fn init_audionimbus_sources(
                 continue;
             }
         };
+        simulator.write().unwrap().add_source(&source);
         commands.entity(entity).insert(AudionimbusSource(source));
     }
 
