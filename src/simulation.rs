@@ -152,9 +152,10 @@ fn update_simulation(
         let simulation_outputs = source.get_outputs(audionimbus::SimulationFlags::DIRECT);
 
         let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(SimulationOutputEvent(
-            simulation_outputs,
-        )));
+        events.push(NodeEventType::custom(SimulationOutputEvent {
+            flags: audionimbus::SimulationFlags::DIRECT,
+            outputs: simulation_outputs,
+        }));
     }
 
     let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
@@ -174,13 +175,24 @@ fn update_simulation(
     // The previous simulation is complete, so we can start the next one
 
     // Read the newest outputs
-    let reverb_simulation_outputs = listener_source.get_outputs(
-        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-    );
-
+    let reverb_simulation_outputs =
+        listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
     reverb_data.push(NodeEventType::custom(
         reverb_simulation_outputs.reflections().into_inner(),
     ));
+
+    for (mut source, _transform, effects) in nodes.iter_mut() {
+        let simulation_outputs = source.get_outputs(
+            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+        );
+
+        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
+        events.push(NodeEventType::custom(SimulationOutputEvent {
+            flags: audionimbus::SimulationFlags::REFLECTIONS
+                | audionimbus::SimulationFlags::PATHING,
+            outputs: simulation_outputs,
+        }));
+    }
 
     // set new inputs
     simulator.set_shared_inputs(
@@ -206,7 +218,7 @@ fn update_simulation(
         let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
 
         source.set_inputs(
-            audionimbus::SimulationFlags::REFLECTIONS,
+            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
             audionimbus::SimulationInputs {
                 source: orientation.to_audionimbus(),
                 direct_simulation: None,
@@ -308,4 +320,7 @@ pub struct AudionimbusSimulator {
     pub sampling_rate: NonZeroU32,
 }
 
-pub(crate) struct SimulationOutputEvent(pub(crate) audionimbus::SimulationOutputs);
+pub(crate) struct SimulationOutputEvent {
+    pub(crate) flags: audionimbus::SimulationFlags,
+    pub(crate) outputs: audionimbus::SimulationOutputs,
+}

@@ -140,7 +140,8 @@ impl AudioNode for SteamAudioNode {
             .collect(),
             max_block_frames: cx.stream_info.max_block_frames,
             started_draining: false,
-            simulation_outputs: None,
+            direct_effect_params: None,
+            reflection_effect_params: None,
             order: config.order,
             ambisonics_encode_container: vec![
                 0.0;
@@ -170,7 +171,8 @@ struct SteamAudioProcessor {
     output_buffer: Vec<Vec<f32>>,
     max_block_frames: NonZeroU32,
     started_draining: bool,
-    simulation_outputs: Option<audionimbus::SimulationOutputs>,
+    direct_effect_params: Option<audionimbus::DirectEffectParams>,
+    reflection_effect_params: Option<audionimbus::ReflectionEffectParams>,
     ambisonics_encode_container: Vec<f32>,
     ambisonics_encode_ptrs: ChannelPtrs,
     reflections_container: Vec<f32>,
@@ -194,7 +196,15 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(update) = event.downcast::<SimulationOutputEvent>() {
-                self.simulation_outputs = Some(update.0);
+                if update.flags.contains(audionimbus::SimulationFlags::DIRECT) {
+                    self.direct_effect_params = Some(update.outputs.direct().into_inner());
+                }
+                if update
+                    .flags
+                    .contains(audionimbus::SimulationFlags::REFLECTIONS)
+                {
+                    self.reflection_effect_params = Some(update.outputs.reflections().into_inner());
+                }
             }
         }
 
@@ -207,18 +217,21 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             }
             // Buffer full, let's work!
 
-            let (Some(simulation_outputs), Some(SharedReverbData(reverb_effect_params))) = (
-                self.simulation_outputs.as_ref(),
+            let (
+                Some(direct_effect_params),
+                Some(reflection_effect_params),
+                Some(SharedReverbData(reverb_effect_params)),
+            ) = (
+                self.direct_effect_params.as_ref(),
+                self.reflection_effect_params.as_ref(),
                 extra.store.try_get::<SharedReverbData>(),
-            ) else {
+            )
+            else {
                 self.input_buffer.clear();
                 return ProcessStatus::ClearAllOutputs;
             };
 
             let source_position = self.params.source_position;
-
-            let direct_effect_params = simulation_outputs.direct();
-            let reflection_effect_params = simulation_outputs.reflections();
 
             let mut channel_ptrs = [std::ptr::null_mut(); 1];
             self.input_container.copy_from_slice(&self.input_buffer);
@@ -272,7 +285,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             )
             .unwrap();
             let _effect_state = self.reflection_effect.apply(
-                &reflection_effect_params,
+                reflection_effect_params,
                 &input_buffer,
                 &reflection_buffer,
             );
