@@ -1,3 +1,4 @@
+#[doc = include_str!("../readme.md")]
 use std::marker::PhantomData;
 use std::sync::LazyLock;
 
