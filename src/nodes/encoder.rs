@@ -195,12 +195,15 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(update) = event.downcast::<SimulationOutputEvent>() {
-                if update.flags.contains(audionimbus::SimulationFlags::DIRECT) {
+                if self.direct_effect_params.is_none()
+                    || update.flags.contains(audionimbus::SimulationFlags::DIRECT)
+                {
                     self.direct_effect_params = Some(update.outputs.direct().into_inner());
                 }
-                if update
-                    .flags
-                    .contains(audionimbus::SimulationFlags::REFLECTIONS)
+                if self.reflection_effect_params.is_none()
+                    || update
+                        .flags
+                        .contains(audionimbus::SimulationFlags::REFLECTIONS)
                 {
                     self.reflection_effect_params = Some(update.outputs.reflections().into_inner());
                 }

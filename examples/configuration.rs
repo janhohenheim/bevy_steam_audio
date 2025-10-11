@@ -55,14 +55,17 @@ fn setup(
         SteamAudioPool,
         // `SteamAudioSamplePlayer` provides per-sample-player configuration
         SteamAudioSamplePlayer {
-            flags: SimulationFlags::DIRECT,
+            // This source generates both direct and reflected sound
+            flags: SimulationFlags::DIRECT | SimulationFlags::REFLECTIONS,
         },
         // The `SteamAudioNode` tunes the parameters used when processing the audio.
-        // For example, let's only listen to the reflected sound.
         sample_effects![SteamAudioNode {
-            direct_gain: 0.0,
-            reverb_gain: 0.0,
+            // boost the reflected sound relative to the direct sound
+            direct_gain: 0.1,
             reflection_gain: 3.0,
+            // reverb is a kind of reflection, so it's enabled for this sampler by the flags above.
+            // but we can disable it by setting the gain to zero
+            reverb_gain: 0.0,
             ..default()
         }],
     ));
