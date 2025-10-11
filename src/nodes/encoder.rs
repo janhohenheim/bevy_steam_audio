@@ -42,9 +42,9 @@ pub struct SteamAudioNode {
 impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
-            direct_gain: 1.0 / 3.0,
-            reflection_gain: 1.0 / 3.0,
-            reverb_gain: 1.0 / 3.0,
+            direct_gain: 1.0,
+            reflection_gain: 0.3,
+            reverb_gain: 0.1,
             source_position: Vec3::ZERO,
             listener_position: Vec3::ZERO,
         }
