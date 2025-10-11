@@ -99,15 +99,20 @@ fn recreate_simulator_on_settings_change(
     mut nodes: Query<&mut SteamAudioNodeConfig>,
     mut decode_nodes: Query<&mut SteamAudioDecodeNodeConfig>,
     mut commands: Commands,
+    mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
-    if quality.is_added() {
+    let Some(prev_quality) = *prev_quality else {
+        *prev_quality = Some(quality.clone());
+        return;
+    };
+
+    if !quality.is_changed() && prev_quality == *quality {
         return;
     }
-    if quality.is_changed() {
-        commands.trigger(CreateSimulator {
-            sampling_rate: simulator.sampling_rate,
-        });
-    }
+
+    commands.trigger(CreateSimulator {
+        sampling_rate: simulator.sampling_rate,
+    });
 
     for mut node_config in nodes.iter_mut() {
         *node_config = SteamAudioNodeConfig {
@@ -130,6 +135,7 @@ fn create_simulator(
     quality: Res<SteamAudioQuality>,
     root: Res<SteamAudioRootScene>,
 ) -> Result {
+    error!("create_simulator");
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),
