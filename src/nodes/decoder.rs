@@ -234,4 +234,42 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         }
         ProcessStatus::OutputsModified
     }
+
+    fn new_stream(
+        &mut self,
+        stream_info: &firewheel::StreamInfo,
+        context: &mut firewheel::node::ProcStreamCtx,
+    ) {
+        let settings = audionimbus::AudioSettings {
+            sampling_rate: stream_info.sample_rate.get(),
+            frame_size: self.frame_size,
+        };
+        let hrtf = audionimbus::Hrtf::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::HrtfSettings {
+                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
+                ..default()
+            },
+        )
+        .unwrap();
+
+        self.hrtf = hrtf.clone();
+        self.ambisonics_decode_effect = audionimbus::AmbisonicsDecodeEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::AmbisonicsDecodeEffectSettings {
+                max_order: self.order,
+                speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                hrtf: &hrtf,
+            },
+        )
+        .unwrap();
+        for (i, old) in self.output_buffer.clone().into_iter().enumerate() {
+            let mut vec = Vec::with_capacity(stream_info.max_block_frames.get() as usize * 2);
+            vec.extend(old);
+            self.output_buffer[i] = vec;
+        }
+        self.max_block_frames = stream_info.max_block_frames;
+    }
 }

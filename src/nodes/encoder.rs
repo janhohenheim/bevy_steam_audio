@@ -349,6 +349,63 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         }
         ProcessStatus::OutputsModified
     }
+
+    fn new_stream(
+        &mut self,
+        stream_info: &firewheel::StreamInfo,
+        _context: &mut firewheel::node::ProcStreamCtx,
+    ) {
+        let settings = audionimbus::AudioSettings {
+            sampling_rate: stream_info.sample_rate.get(),
+            frame_size: self.frame_size,
+        };
+        let num_channels = order_to_num_channels(self.order);
+
+        self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::AmbisonicsEncodeEffectSettings {
+                max_order: self.order,
+            },
+        )
+        .unwrap();
+        self.direct_effect = audionimbus::DirectEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::DirectEffectSettings { num_channels: 1 },
+        )
+        .unwrap();
+        self.reflection_effect = audionimbus::ReflectionEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::ReflectionEffectSettings::Convolution {
+                impulse_response_size: 2 * settings.sampling_rate,
+                num_channels: num_channels,
+            },
+        )
+        .unwrap();
+        self.reverb_effect = audionimbus::ReflectionEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::ReflectionEffectSettings::Convolution {
+                impulse_response_size: 2 * settings.sampling_rate,
+                num_channels: num_channels,
+            },
+        )
+        .unwrap();
+        self.output_buffer = self
+            .output_buffer
+            .drain(..)
+            .enumerate()
+            .map(|(i, old)| {
+                let mut vec = Vec::with_capacity(stream_info.max_block_frames.get() as usize * 2);
+                vec.extend(old);
+                vec
+            })
+            .collect();
+
+        self.max_block_frames = stream_info.max_block_frames;
+    }
 }
 
 pub(crate) struct SimulationOutputEvent {
