@@ -26,7 +26,7 @@ use crate::wrapper::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        create_simulator_on_settings_change
+        recreate_simulator_on_settings_change
             .in_set(SteamAudioSystems::CreateSimulator)
             .run_if(resource_exists::<AudionimbusSimulator>),
     );
@@ -66,7 +66,7 @@ fn create_simulator_on_stream_restart(
     });
 }
 
-fn create_simulator_on_settings_change(
+fn recreate_simulator_on_settings_change(
     quality: Res<SteamAudioQuality>,
     simulator: Res<AudionimbusSimulator>,
     mut commands: Commands,
