@@ -90,9 +90,29 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "dynamic_linking"
 ] }
 
+[lints.rust]
+#missing_docs = "warn"
+unused_qualifications = "warn"
+
 [lints.clippy]
 too_many_arguments = "allow"
 type_complexity = "allow"
+needless_lifetimes = "allow"
+doc_markdown = "warn"
+manual_let_else = "warn"
+match_same_arms = "warn"
+redundant_closure_for_method_calls = "warn"
+redundant_else = "warn"
+semicolon_if_nothing_returned = "warn"
+undocumented_unsafe_blocks = "warn"
+unwrap_or_default = "warn"
+nonstandard_macro_braces = "warn"
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
+too_long_first_doc_paragraph = "allow"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
 
 [profile.dev.package."*"]
 inherits = "dev"

@@ -48,8 +48,10 @@ fn init_audionimbus_sources(
         let name = names.get(entity).unwrap();
         let settings = match settings.get(entity) {
             Ok(settings) => settings,
-            Err(_) => {
-                errors.push(format!("{name} Failed to get SteamAudioSamplePlayer"));
+            Err(err) => {
+                errors.push(format!(
+                    "{name} Failed to get SteamAudioSamplePlayer: {err}"
+                ));
                 continue;
             }
         };

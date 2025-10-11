@@ -16,7 +16,7 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<ReverbDataNode>();
 }
 
-pub(crate) struct SharedReverbData(pub(crate) audionimbus::ReflectionEffectParams);
+pub(crate) struct SharedReverbData(pub(crate) ReflectionEffectParams);
 
 #[derive(Component, Patch, Diff, Clone, RealtimeClone)]
 pub(crate) struct ReverbDataNode;

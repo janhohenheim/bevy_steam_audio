@@ -51,6 +51,6 @@ impl ToSteamAudioMesh for Mesh {
             material_indices: &vec![0; triangles.len()],
             materials: &[material],
         };
-        audionimbus::StaticMesh::try_new(scene, &settings).map_err(|e| e.into())
+        audionimbus::StaticMesh::try_new(scene, &settings).map_err(Into::into)
     }
 }
