@@ -343,13 +343,13 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reflection_gain);
 
-            let _effect_state = self.reverb_effect.apply(
-                reverb_effect_params,
-                &input_sa_buffer,
-                &ambisonics_sa_buffer,
-            );
+            // let _effect_state = self.reverb_effect.apply(
+            //     reverb_effect_params,
+            //     &input_sa_buffer,
+            //     &ambisonics_sa_buffer,
+            // );
 
-            accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reverb_gain);
+            // accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reverb_gain);
 
             if self.params.pathing_available {
                 let _effect_state = self.pathing_effect.apply(

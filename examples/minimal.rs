@@ -1,4 +1,4 @@
-use std::f32::consts::TAU;
+use std::{f32::consts::TAU, time::Duration};
 
 use bevy::prelude::*;
 use bevy_seedling::prelude::*;
@@ -19,6 +19,18 @@ fn main() {
             // `Mesh3d` and `MeshMaterial3d`.
             Mesh3dBackendPlugin::default(),
         ))
+        .insert_resource(SteamAudioQuality {
+            order: 2,
+            frame_size: 1024,
+            reflections: SteamAudioReflectionsQuality {
+                max_num_sources: 256,
+                impulse_duration: Duration::from_secs_f32(1.0),
+                // num_rays: 128,
+                // kind: bevy_steam_audio::settings::SteamAudioReflectionKind::Hybrid,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_audio)
         .run();
@@ -29,6 +41,7 @@ fn setup(
     assets: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut main_bus: Single<&mut VolumeNode, With<MainBus>>,
 ) {
     // The camera is our listener using  SteamAudioListener
     commands.spawn((Camera3d::default(), SteamAudioListener));
@@ -41,14 +54,24 @@ fn setup(
         SteamAudioMesh::default(),
     ));
 
-    // The sample player uses Steam Audio through the SteamAudioPool
-    commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")),
-        SteamAudioPool,
-        Transform::from_xyz(6.0, 0.0, 0.0),
-        Mesh3d(meshes.add(Sphere::new(0.5))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-    ));
+    // turn that shit way down
+    // main_bus.volume = Volume::Linear(0.1);
+
+    let total = 1;
+
+    let mut transform = Transform::from_xyz(6.0, 0.0, 0.0);
+    for _ in 0..total {
+        transform.rotate_around(Vec3::ZERO, Quat::from_rotation_y(TAU / total as f32));
+
+        // The sample player uses Steam Audio through the SteamAudioPool
+        commands.spawn((
+            SamplePlayer::new(assets.load("selfless_courage.ogg")),
+            SteamAudioPool,
+            transform,
+            Mesh3d(meshes.add(Sphere::new(0.5))),
+            MeshMaterial3d(materials.add(Color::WHITE)),
+        ));
+    }
 
     commands.spawn((
         DirectionalLight::default(),
@@ -58,13 +81,16 @@ fn setup(
 
 // Rotate the sample player around the camera to demonstrate Steam Audio's capabilities
 fn rotate_audio(
-    mut sample_player: Single<&mut Transform, With<SamplePlayer>>,
+    mut sample_players: Query<&mut Transform, With<SamplePlayer>>,
     camera: Single<&Transform, (With<Camera>, Without<SamplePlayer>)>,
     time: Res<Time>,
 ) {
     let seconds_for_one_orbit = 8.0;
-    sample_player.rotate_around(
-        camera.translation,
-        Quat::from_rotation_y(TAU / seconds_for_one_orbit * time.delta_secs()),
-    );
+
+    for mut sample_player in sample_players.iter_mut() {
+        sample_player.rotate_around(
+            camera.translation,
+            Quat::from_rotation_y(TAU / seconds_for_one_orbit * time.delta_secs()),
+        );
+    }
 }

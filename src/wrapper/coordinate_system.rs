@@ -1,16 +1,52 @@
 use crate::prelude::*;
-use firewheel::diff::{Diff, Patch, RealtimeClone};
+use firewheel::{
+    diff::{Diff, Patch, RealtimeClone},
+    event::ParamData,
+};
 
 pub(super) fn plugin(app: &mut App) {
     let _ = app;
 }
 
-#[derive(Debug, Patch, Diff, Clone, Copy, Default, PartialEq, RealtimeClone, Reflect)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, RealtimeClone, Reflect)]
 pub struct AudionimbusCoordinateSystem {
     pub right: Vec3,
     pub up: Vec3,
     pub ahead: Vec3,
     pub origin: Vec3,
+}
+
+// Since this entire struct tends to change every frame, we'll
+// cut down on the number of events by 4x if we just send the
+// whole thing.
+impl Diff for AudionimbusCoordinateSystem {
+    fn diff<E: firewheel::diff::EventQueue>(
+        &self,
+        baseline: &Self,
+        path: firewheel::diff::PathBuilder,
+        event_queue: &mut E,
+    ) {
+        if self != baseline {
+            event_queue.push_param(ParamData::any(*self), path);
+        }
+    }
+}
+
+impl Patch for AudionimbusCoordinateSystem {
+    type Patch = Self;
+
+    fn patch(
+        data: &ParamData,
+        _path: &[u32],
+    ) -> std::result::Result<Self::Patch, firewheel::diff::PatchError> {
+        data.downcast_ref()
+            .copied()
+            .ok_or(firewheel::diff::PatchError::InvalidData)
+    }
+
+    fn apply(&mut self, patch: Self::Patch) {
+        *self = patch;
+    }
 }
 
 impl AudionimbusCoordinateSystem {
