@@ -1,7 +1,6 @@
-use std::{iter, num::NonZeroU32};
-
 use crate::{
     STEAM_AUDIO_CONTEXT,
+    nodes::FixedProcessBlock,
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
@@ -88,6 +87,12 @@ impl AudioNode for SteamAudioDecodeNode {
         .unwrap();
 
         SteamAudioDecodeProcessor {
+            fixed_block: FixedProcessBlock::new(
+                config.frame_size as usize,
+                cx.stream_info.max_block_frames.get() as usize,
+                config.num_channels() as usize,
+                2,
+            ),
             params: self.clone(),
             hrtf: hrtf.clone(),
             ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect::try_new(
@@ -100,35 +105,20 @@ impl AudioNode for SteamAudioDecodeNode {
                 },
             )
             .unwrap(),
-            input_buffer: iter::repeat_with(|| Vec::with_capacity(config.frame_size as usize))
-                .take(config.num_channels() as usize)
-                .collect(),
-            output_buffer: std::array::from_fn(|_| {
-                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2)
-            }),
-            max_block_frames: cx.stream_info.max_block_frames,
-            started_draining: false,
             order: config.order,
             frame_size: config.frame_size,
-            mix_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
-            staging_container: vec![0.0; (config.frame_size * 2) as usize],
-            mix_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
+            mix_ptrs: ChannelPtrs::new(config.num_channels() as usize),
         }
     }
 }
 
 struct SteamAudioDecodeProcessor {
+    fixed_block: FixedProcessBlock,
     params: SteamAudioDecodeNode,
     hrtf: audionimbus::Hrtf,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
-    input_buffer: Vec<Vec<f32>>,
-    output_buffer: [Vec<f32>; 2],
-    max_block_frames: NonZeroU32,
-    started_draining: bool,
     order: u32,
     frame_size: u32,
-    mix_container: Vec<f32>,
-    staging_container: Vec<f32>,
     mix_ptrs: ChannelPtrs,
 }
 
@@ -137,85 +127,68 @@ impl SteamAudioDecodeProcessor {
     fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
     }
-
-    #[inline]
-    fn total_capacity(&self) -> usize {
-        [&self.mix_container, &self.staging_container]
-            .iter()
-            .map(|b| b.capacity())
-            .chain(iter::once(self.input_buffer.capacity()))
-            .chain(self.input_buffer.iter().map(Vec::capacity))
-            .chain(self.output_buffer.iter().map(Vec::capacity))
-            .sum()
-    }
-
-    #[inline]
-    fn validate_capacity(&self, start_capacity: usize) {
-        let end_capacity = self.total_capacity();
-        if start_capacity != end_capacity {
-            warn!(
-                "Allocated in SteamAudioDecodeProcessor. Capacity mismatch: {} != {}",
-                start_capacity, end_capacity
-            );
-        }
-    }
 }
 
 impl AudioNodeProcessor for SteamAudioDecodeProcessor {
     fn process(
         &mut self,
         proc_info: &ProcInfo,
-        ProcBuffers { inputs, outputs }: ProcBuffers,
+        proc_buffers: ProcBuffers,
         events: &mut ProcEvents,
         _: &mut ProcExtra,
     ) -> ProcessStatus {
-        let start_capacity = self.total_capacity();
         for patch in events.drain_patches::<SteamAudioDecodeNode>() {
             Patch::apply(&mut self.params, patch);
         }
 
-        if proc_info.in_silence_mask.all_channels_silent(inputs.len()) {
-            self.validate_capacity(start_capacity);
+        if proc_info
+            .in_silence_mask
+            .all_channels_silent(proc_buffers.inputs.len())
+            && self.fixed_block.inputs_clear()
+        {
             return ProcessStatus::ClearAllOutputs;
         }
 
-        for frame in 0..proc_info.frames {
-            for (dst, src) in self.input_buffer.iter_mut().zip(inputs) {
-                dst.push(src[frame]);
-            }
-            if self.input_buffer[0].len() != self.input_buffer[0].capacity() {
-                continue;
-            }
-            // Buffer full
-            let channels = self.num_channels();
-
+        let channels = self.num_channels();
+        let fixed_block = &mut self.fixed_block;
+        fixed_block.process(proc_buffers, proc_info, |inputs, outputs| {
             for channel in 0..channels as usize {
-                self.mix_container[(channel * self.frame_size as usize)
-                    ..(channel + 1) * self.frame_size as usize]
-                    .copy_from_slice(&self.input_buffer[channel]);
+                let channel_buffer = &inputs[channel];
+                assert_eq!(channel_buffer.len(), self.frame_size as usize);
+                self.mix_ptrs[channel] = channel_buffer.as_ptr() as *mut _;
             }
-            let settings = audionimbus::AudioBufferSettings {
-                num_channels: Some(channels),
-                ..default()
-            };
-            let mix_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut self.mix_container,
-                &mut self.mix_ptrs,
-                settings,
-            )
-            .unwrap();
 
-            let mut channel_ptrs = [std::ptr::null_mut(); 2];
-            let settings = audionimbus::AudioBufferSettings {
-                num_channels: Some(outputs.len() as u32),
-                ..default()
+            // # Safety
+            //
+            // The inputs pointers refer to valid memory with the
+            // correct length. While we've passed around *mut pointers,
+            // they will never be written to.
+            let input_sa_buffer = unsafe {
+                audionimbus::AudioBuffer::<&[f32], _>::try_new_borrowed(
+                    self.mix_ptrs.as_mut(),
+                    self.frame_size,
+                )
+                .unwrap()
             };
-            let staging_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut self.staging_container,
-                &mut channel_ptrs,
-                settings,
-            )
-            .unwrap();
+
+            let (left, right) = outputs.split_at_mut(1);
+
+            assert_eq!(left[0].len(), self.frame_size as usize);
+            assert_eq!(right[0].len(), self.frame_size as usize);
+
+            let mut channel_ptrs = [left[0].as_mut_ptr(), right[0].as_mut_ptr()];
+
+            // # Safety
+            //
+            // The inputs pointers refer to valid, non-aliased memory with the
+            // correct length.
+            let output_sa_buffer = unsafe {
+                audionimbus::AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                    channel_ptrs.as_mut_slice(),
+                    self.frame_size,
+                )
+                .unwrap()
+            };
 
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: self.order,
@@ -225,35 +198,10 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
                 &ambisonics_decode_effect_params,
-                &mix_buffer,
-                &staging_buffer,
+                &input_sa_buffer,
+                &output_sa_buffer,
             );
-
-            let left = &self.staging_container[..self.frame_size as usize];
-            let right = &self.staging_container[self.frame_size as usize..];
-            self.output_buffer[0].extend(left);
-            self.output_buffer[1].extend(right);
-            for buff in &mut self.input_buffer {
-                buff.clear();
-            }
-        }
-
-        if !self.started_draining {
-            if (self.output_buffer[0].len() as f32) < self.max_block_frames.get() as f32 * 1.5 {
-                self.validate_capacity(start_capacity);
-                return ProcessStatus::ClearAllOutputs;
-            }
-            self.started_draining = true;
-        }
-
-        let output_len = outputs[0].len();
-        for (src, dst) in self.output_buffer.iter_mut().zip(outputs.iter_mut()) {
-            for (i, out) in src.drain(..output_len).enumerate() {
-                dst[i] = out;
-            }
-        }
-        self.validate_capacity(start_capacity);
-        ProcessStatus::OutputsModified
+        })
     }
 
     fn new_stream(
@@ -261,6 +209,12 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         stream_info: &firewheel::StreamInfo,
         _context: &mut firewheel::node::ProcStreamCtx,
     ) {
+        if stream_info.sample_rate.get() == stream_info.prev_sample_rate.get()
+            && stream_info.max_block_frames.get() == self.fixed_block.max_block_frames() as u32
+        {
+            return;
+        }
+
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
             frame_size: self.frame_size,
@@ -286,11 +240,9 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             },
         )
         .unwrap();
-        for (i, old) in self.output_buffer.clone().into_iter().enumerate() {
-            let mut vec = Vec::with_capacity(stream_info.max_block_frames.get() as usize * 2);
-            vec.extend(old);
-            self.output_buffer[i] = vec;
-        }
-        self.max_block_frames = stream_info.max_block_frames;
+
+        let fixed_block_size = self.fixed_block.inputs.channel_capacity;
+        let max_output_size = stream_info.max_block_frames.get() as usize;
+        self.fixed_block.resize(fixed_block_size, max_output_size);
     }
 }
