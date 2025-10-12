@@ -2,7 +2,7 @@ use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
+    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
 };
 
 mod util;
@@ -50,7 +50,7 @@ fn setup(
         sample_effects![SteamAudioNode {
             // TODO: this is just for testing, revert it to only `reverb_gain: 0.01` with no comment :)
             // boost the reflected sound relative to the direct sound
-            direct_gain: 1.0,
+            direct_gain: 0.0,
             reflection_gain: 0.0,
             // reverb is a kind of reflection, so it's enabled for this sampler by the flags above.
             // but we can disable it by setting the gain to zero
@@ -74,13 +74,12 @@ fn set_material(
     children: Query<&Children>,
     meshes: Query<(), (With<Mesh3d>, Without<SamplePlayer>)>,
     mut commands: Commands,
+    mut probe_writer: MessageWriter<GenerateProbes>,
 ) {
     for child in children.iter_descendants(ready.entity) {
         if meshes.contains(child) {
-            commands
-                .entity(child)
-                .insert(MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC));
+            commands.entity(child).insert(SteamAudioMesh::default());
         }
     }
-    //commands.trigger(GenerateProbes::default());
+    probe_writer.write(GenerateProbes::default());
 }
