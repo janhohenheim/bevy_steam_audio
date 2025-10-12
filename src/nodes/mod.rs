@@ -80,7 +80,7 @@ impl FixedProcessBlock {
 
     pub fn resize(&mut self, fixed_block_size: usize, max_output_size: usize) {
         // otherwise, extend and copy as needed
-        if let Some(output) = self.outputs.get(0)
+        if let Some(output) = self.outputs.first()
             && output.capacity() != max_output_size
         {
             for buffer in self.outputs.iter_mut() {
@@ -179,8 +179,8 @@ impl FixedProcessBlock {
         }
 
         // write outputs
-        if let Some(inner_buffer) = self.outputs.get(0)
-            && let Some(outer_buffer) = buffers.outputs.get(0)
+        if let Some(inner_buffer) = self.outputs.first()
+            && let Some(outer_buffer) = buffers.outputs.first()
             && inner_buffer.len() >= outer_buffer.len()
         {
             for (proc_out, buffer) in buffers.outputs.iter_mut().zip(&mut self.outputs) {
@@ -201,9 +201,8 @@ impl FixedProcessBlock {
     }
 
     pub fn max_block_frames(&self) -> usize {
-        self.outputs
-            .get(0)
-            .map(|o| o.capacity())
+        self.outputs.first()
+            .map(Vec::capacity)
             .unwrap_or_default()
     }
 

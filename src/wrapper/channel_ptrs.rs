@@ -13,7 +13,7 @@ unsafe impl Send for ChannelPtrs {}
 impl ChannelPtrs {
     pub fn new(size: usize) -> Self {
         Self(
-            core::iter::repeat_with(|| core::ptr::null_mut())
+            core::iter::repeat_with(core::ptr::null_mut)
                 .take(size)
                 .collect(),
         )

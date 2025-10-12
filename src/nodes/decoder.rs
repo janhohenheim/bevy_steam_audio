@@ -152,13 +152,14 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         let channels = self.num_channels();
         let fixed_block = &mut self.fixed_block;
         fixed_block.process(proc_buffers, proc_info, |inputs, outputs| {
+            #[expect(clippy::needless_range_loop, reason = "More readable like this")]
             for channel in 0..channels as usize {
                 let channel_buffer = &inputs[channel];
                 assert_eq!(channel_buffer.len(), self.frame_size as usize);
-                self.mix_ptrs[channel] = channel_buffer.as_ptr() as *mut _;
+                self.mix_ptrs[channel] = channel_buffer.as_ptr().cast_mut();
             }
 
-            // # Safety
+            // SAFETY:
             //
             // The inputs pointers refer to valid memory with the
             // correct length. While we've passed around *mut pointers,
@@ -178,7 +179,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
 
             let mut channel_ptrs = [left[0].as_mut_ptr(), right[0].as_mut_ptr()];
 
-            // # Safety
+            // SAFETY:
             //
             // The inputs pointers refer to valid, non-aliased memory with the
             // correct length.

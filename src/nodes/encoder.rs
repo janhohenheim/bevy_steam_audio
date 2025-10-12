@@ -273,10 +273,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let source_position = self.params.source_position;
 
             assert_eq!(inputs[0].len(), frame_size);
-            let mut channel_ptrs = [inputs[0].as_ptr() as *mut _];
+            let mut channel_ptrs = [inputs[0].as_ptr().cast_mut()];
 
-            // # Safety
-            //
+            // SAFETY:
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `input_sa_buffer`.
             let input_sa_buffer = unsafe {
@@ -290,7 +289,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             assert!(scratch_direct.len() >= frame_size);
             let mut channel_ptrs = [scratch_direct.as_mut_ptr()];
 
-            // # Safety
+            // SAFETY:
             //
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `direct_sa_buffer`.

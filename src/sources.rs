@@ -42,9 +42,14 @@ fn init_audionimbus_sources(
     settings: Query<&SteamAudioSamplePlayer>,
     mut errors: Local<Vec<String>>,
     names: Query<NameOrEntity>,
+    mut to_retry: Local<Vec<Entity>>,
 ) -> Result {
     errors.clear();
     for entity in to_setup.drain(..) {
+        let Ok(simulator) = simulator.try_read() else {
+            to_retry.push(entity);
+            continue;
+        };
         let name = names.get(entity).unwrap();
         let settings = match settings.get(entity) {
             Ok(settings) => settings,
@@ -58,15 +63,18 @@ fn init_audionimbus_sources(
         let settings = audionimbus::SourceSettings {
             flags: settings.flags,
         };
-        let source = match audionimbus::Source::try_new(&simulator.read().unwrap(), &settings) {
+        let source = match audionimbus::Source::try_new(&simulator, &settings) {
             Ok(source) => source,
             Err(err) => {
                 errors.push(format!("{name} Failed to create AudionimbusSource: {err}"));
                 continue;
             }
         };
-        simulator.write().unwrap().add_source(&source);
+        simulator.add_source(&source);
         commands.entity(entity).insert(AudionimbusSource(source));
+    }
+    for entity in to_retry.drain(..) {
+        to_setup.push(entity);
     }
 
     if errors.is_empty() {

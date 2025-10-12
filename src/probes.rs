@@ -9,7 +9,10 @@ use crate::{
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        generate_probes.in_set(SteamAudioSystems::GenerateProbes),
+        generate_probes
+            .in_set(SteamAudioSystems::GenerateProbes)
+            // Important to have a run condition to not try to lock the simulator every frame
+            .run_if(on_message::<GenerateProbes>),
     );
     app.add_message::<GenerateProbes>();
 }
@@ -35,14 +38,20 @@ impl Default for GenerateProbes {
 pub struct SteamAudioProbeBatch(pub audionimbus::ProbeBatch);
 
 fn generate_probes(
-    mut generate_reader: MessageReader<GenerateProbes>,
+    mut generate_probes: ResMut<Messages<GenerateProbes>>,
     aabbs: Query<&Aabb>,
     root: Res<SteamAudioRootScene>,
     mut commands: Commands,
     simulator: Res<AudionimbusSimulator>,
+    mut to_retry: Local<Vec<GenerateProbes>>,
 ) -> Result {
     let mut global_aabb = None;
-    for generate in generate_reader.read() {
+    for generate in generate_probes.drain() {
+        let Ok(mut simulator) = simulator.try_write() else {
+            // Simulator is in use, try again next frame
+            to_retry.push(generate);
+            continue;
+        };
         let aabb = if let Some(aabb) = generate.aabb {
             aabb
         } else {
@@ -77,8 +86,11 @@ fn generate_probes(
         let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
         batch.add_probe_array(&array);
         batch.commit();
-        simulator.write().unwrap().add_probe_batch(&batch);
+        simulator.add_probe_batch(&batch);
         commands.insert_resource(SteamAudioProbeBatch(batch));
+    }
+    for generate in to_retry.drain(..) {
+        generate_probes.write(generate);
     }
     Ok(())
 }

@@ -175,7 +175,8 @@ fn create_simulator(
     let future = async move {
         loop {
             {
-                let simulator = simulator.write().unwrap();
+                // Block thread until simulator is ready
+                let simulator = simulator.read().unwrap();
                 simulator.run_reflections();
                 simulator.run_pathing();
             }
@@ -194,15 +195,19 @@ fn create_simulator(
 }
 
 fn migrate_simulator(
-    simulator: Res<AudionimbusSimulator>,
+    mut simulator: ResMut<AudionimbusSimulator>,
     sources: Query<&AudionimbusSource>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
     root: Res<SteamAudioRootScene>,
-) {
+) -> Result {
     if !simulator.is_changed() {
-        return;
+        return Ok(());
     }
-    let mut simulator = simulator.write().unwrap();
+    let Ok(mut simulator) = simulator.try_write() else {
+        // simulator is in use by another thread, check next frame again.
+        simulator.set_changed();
+        return Ok(());
+    };
     for source in &sources {
         simulator.add_source(source);
     }
@@ -211,6 +216,7 @@ fn migrate_simulator(
         simulator.add_probe_batch(&probe_batch);
     }
     simulator.commit();
+    Ok(())
 }
 
 /// Inspired by the Unity Steam Audio plugin.
@@ -242,9 +248,13 @@ fn update_simulation(
     let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
 
     if synchro.complete.load(Ordering::SeqCst) {
-        // todo: only do this when needed
+        // todo: only commit scene when needed
         root.commit();
-        simulator.write().unwrap().commit();
+        // This should never fail unless there's a bug, as this branch should only be called when the reflection thread is idle.
+        simulator
+            .try_write()
+            .map_err(|e| format!("Failed to commit simulator even though it should be idle: {e}"))?
+            .commit();
     }
 
     decode_node.listener_orientation = listener_orientation;
@@ -286,7 +296,10 @@ fn update_simulation(
         node.listener_position = listener_orientation;
     }
 
-    let simulator = simulator.read().unwrap();
+    let simulator = simulator
+        .try_read()
+        .map_err(|e| format!("Failed to run simulator even though it should be idle: {e}"))?;
+
     simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
 
     simulator.run_direct();
