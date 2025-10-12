@@ -236,8 +236,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             }
         }
 
-        // Don't early return on silent inputs: there is probably reverb left
-        // TODO: actually check for this silence like freeverb
+        // If the previous output of this node was silent, and the inputs are also silent
+        // then we know there is no reverb tail left and we can skip processing.
+        if proc_info.prev_output_was_silent && proc_info.in_silence_mask.all_channels_silent(1) {
+            return ProcessStatus::ClearAllOutputs;
+        }
 
         let (
             Some(direct_effect_params),
@@ -262,7 +265,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         let frame_size = self.fixed_block.frame_size();
 
         let fixed_block = &mut self.fixed_block;
-        fixed_block.process(proc_buffers, proc_info, |inputs, outputs| {
+        let temp_proc = ProcBuffers {
+            inputs: proc_buffers.inputs,
+            outputs: proc_buffers.outputs,
+        };
+        let result = fixed_block.process(temp_proc, proc_info, |inputs, outputs| {
             let source_position = self.params.source_position;
 
             assert_eq!(inputs[0].len(), frame_size);
@@ -353,7 +360,16 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
                 accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.pathing_gain);
             }
-        })
+        });
+
+        // check for silence when the input is silent
+        if matches!(result, ProcessStatus::OutputsModified)
+            && proc_info.in_silence_mask.all_channels_silent(1)
+        {
+            proc_buffers.check_for_silence_on_outputs(0.0001)
+        } else {
+            result
+        }
     }
 
     fn new_stream(

@@ -34,6 +34,7 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
     commands
         .spawn((
             SamplerPool(SteamAudioPool),
+            PoolSize(1..=1),
             VolumeNodeConfig {
                 channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
             },

@@ -42,7 +42,6 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "std",
   "async_executor",
   "android-game-activity",
-  "android_shared_stdcxx",
   "animation",
   "bevy_asset",
   "bevy_color",
