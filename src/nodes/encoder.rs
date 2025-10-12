@@ -1,13 +1,12 @@
-use std::{iter, num::NonZeroU32};
-
 use crate::{
     STEAM_AUDIO_CONTEXT,
-    nodes::reverb::SharedReverbData,
+    nodes::{FixedProcessBlock, reverb::SharedReverbData},
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
     wrapper::ChannelPtrs,
 };
 
+use audionimbus::AudioBuffer;
 use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
@@ -23,7 +22,6 @@ use firewheel::{
         ProcExtra, ProcInfo, ProcessStatus,
     },
 };
-use itertools::izip;
 
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioNode>();
@@ -79,7 +77,7 @@ impl AudioNode for SteamAudioNode {
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
             .debug_name("Steam Audio node")
-            // 1 -> 9
+            // 1 -> ambisonic order
             .channel_config(ChannelConfig {
                 num_inputs: ChannelCount::MONO,
                 num_outputs: ChannelCount::new(config.num_channels()).unwrap(),
@@ -97,7 +95,6 @@ impl AudioNode for SteamAudioNode {
         };
         SteamAudioProcessor {
             params: self.clone(),
-            frame_size: config.frame_size,
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
@@ -130,56 +127,36 @@ impl AudioNode for SteamAudioNode {
                 },
             )
             .unwrap(),
-            input_buffer: Vec::with_capacity(config.frame_size as usize),
-
-            output_buffer: iter::repeat_with(|| {
-                Vec::with_capacity(cx.stream_info.max_block_frames.get() as usize * 2)
-            })
-            .take(config.num_channels() as usize)
-            .collect(),
-            max_block_frames: cx.stream_info.max_block_frames,
-            started_draining: false,
+            fixed_block: FixedProcessBlock::new(
+                config.frame_size as usize,
+                cx.stream_info.max_block_frames.get() as usize,
+                1,
+                config.num_channels() as usize,
+            ),
             direct_effect_params: None,
             reflection_effect_params: None,
             order: config.order,
-            ambisonics_encode_container: vec![
-                0.0;
-                (config.frame_size * config.num_channels()) as usize
-            ],
-            ambisonics_encode_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize]
-                .into(),
-            reflections_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
-            reflections_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
-            reverb_container: vec![0.0; (config.frame_size * config.num_channels()) as usize],
-            reverb_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
-            input_container: vec![0.0; (config.frame_size) as usize],
-            direct_container: vec![0.0; (config.frame_size) as usize],
+            ambisonics_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
+            ambisonics_buffer: vec![0.0; (config.frame_size * config.num_channels()) as usize],
         }
     }
 }
 
 struct SteamAudioProcessor {
     order: u32,
-    frame_size: u32,
     params: SteamAudioNode,
     ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
     reflection_effect: audionimbus::ReflectionEffect,
     reverb_effect: audionimbus::ReflectionEffect,
-    input_buffer: Vec<f32>,
-    output_buffer: Vec<Vec<f32>>,
-    max_block_frames: NonZeroU32,
-    started_draining: bool,
+    fixed_block: FixedProcessBlock,
     direct_effect_params: Option<audionimbus::DirectEffectParams>,
     reflection_effect_params: Option<audionimbus::ReflectionEffectParams>,
-    ambisonics_encode_container: Vec<f32>,
-    ambisonics_encode_ptrs: ChannelPtrs,
-    reflections_container: Vec<f32>,
-    reflections_ptrs: ChannelPtrs,
-    reverb_container: Vec<f32>,
-    reverb_ptrs: ChannelPtrs,
-    input_container: Vec<f32>,
-    direct_container: Vec<f32>,
+    // We might be able to use the scratch buffers for this, but
+    // the ambisonic order may produce more channels than scratch
+    // buffers.
+    ambisonics_buffer: Vec<f32>,
+    ambisonics_ptrs: ChannelPtrs,
 }
 
 impl SteamAudioProcessor {
@@ -187,45 +164,16 @@ impl SteamAudioProcessor {
     fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order)
     }
-
-    #[inline]
-    fn total_capacity(&self) -> usize {
-        [
-            &self.ambisonics_encode_container,
-            &self.reflections_container,
-            &self.reverb_container,
-            &self.input_container,
-            &self.direct_container,
-        ]
-        .iter()
-        .map(|b| b.capacity())
-        .chain(iter::once(self.input_buffer.capacity()))
-        .chain(iter::once(self.output_buffer.capacity()))
-        .chain(self.output_buffer.iter().map(Vec::capacity))
-        .sum()
-    }
-
-    #[inline]
-    fn validate_capacity(&self, start_capacity: usize) {
-        let end_capacity = self.total_capacity();
-        if start_capacity != end_capacity {
-            warn!(
-                "Allocated in AudioNodeProcessor. Capacity mismatch: {} != {}",
-                start_capacity, end_capacity
-            );
-        }
-    }
 }
 
 impl AudioNodeProcessor for SteamAudioProcessor {
     fn process(
         &mut self,
         proc_info: &ProcInfo,
-        ProcBuffers { inputs, outputs }: ProcBuffers,
+        proc_buffers: ProcBuffers,
         events: &mut ProcEvents,
         extra: &mut ProcExtra,
     ) -> ProcessStatus {
-        let start_capacity = self.total_capacity();
         for mut event in events.drain() {
             if let Some(patch) = SteamAudioNode::patch_event(&event) {
                 Patch::apply(&mut self.params, patch);
@@ -247,49 +195,66 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         }
 
         // Don't early return on silent inputs: there is probably reverb left
+        // TODO: actually check for this silence like freeverb
 
-        for frame in inputs[0].iter().take(proc_info.frames).copied() {
-            self.input_buffer.push(frame);
-            if self.input_buffer.len() != self.input_buffer.capacity() {
-                continue;
-            }
-            // Buffer full, let's work!
+        let (
+            Some(direct_effect_params),
+            Some(reflection_effect_params),
+            Some(SharedReverbData(reverb_effect_params)),
+        ) = (
+            self.direct_effect_params.as_ref(),
+            self.reflection_effect_params.as_ref(),
+            extra.store.try_get::<SharedReverbData>(),
+        )
+        else {
+            // If this is encountered at any point other than just
+            // after insertion into the graph, then something's gone
+            // quite wrong. So, we'll clear the fixed buffers.
+            self.fixed_block.clear();
+            return ProcessStatus::ClearAllOutputs;
+        };
 
-            let (
-                Some(direct_effect_params),
-                Some(reflection_effect_params),
-                Some(SharedReverbData(reverb_effect_params)),
-            ) = (
-                self.direct_effect_params.as_ref(),
-                self.reflection_effect_params.as_ref(),
-                extra.store.try_get::<SharedReverbData>(),
-            )
-            else {
-                self.input_buffer.clear();
-                self.validate_capacity(start_capacity);
-                return ProcessStatus::ClearAllOutputs;
-            };
+        let scratch_direct = extra.scratch_buffers.first_mut();
+        let frame_size = self.fixed_block.frame_size();
 
+        let fixed_block = &mut self.fixed_block;
+        fixed_block.process(proc_buffers, proc_info, |inputs, outputs| {
             let source_position = self.params.source_position;
 
-            let mut channel_ptrs = [std::ptr::null_mut(); 1];
-            self.input_container.copy_from_slice(&self.input_buffer);
-            let input_buffer = audionimbus::AudioBuffer::try_borrowed_with_data(
-                &self.input_container,
-                &mut channel_ptrs,
-            )
-            .unwrap();
+            assert_eq!(inputs[0].len(), frame_size);
+            let mut channel_ptrs = [inputs[0].as_ptr() as *mut _];
 
-            let mut channel_ptrs = [std::ptr::null_mut(); 1];
-            let direct_buffer = audionimbus::AudioBuffer::try_borrowed_with_data(
-                &mut self.direct_container,
-                &mut channel_ptrs,
-            )
-            .unwrap();
+            // # Safety
+            //
+            // `channel_ptrs` points to `frame_size` floats, whose lifetime
+            // will outlast `input_sa_buffer`.
+            let input_sa_buffer = unsafe {
+                AudioBuffer::<&[f32], _>::try_new_borrowed(
+                    channel_ptrs.as_mut_slice(),
+                    frame_size as u32,
+                )
+                .unwrap()
+            };
+
+            assert!(scratch_direct.len() >= frame_size);
+            let mut channel_ptrs = [scratch_direct.as_mut_ptr()];
+
+            // # Safety
+            //
+            // `channel_ptrs` points to `frame_size` floats, whose lifetime
+            // will outlast `direct_sa_buffer`.
+            let direct_sa_buffer = unsafe {
+                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                    channel_ptrs.as_mut_slice(),
+                    frame_size as u32,
+                )
+                .unwrap()
+            };
+
             let _effect_state = self.direct_effect.apply(
                 &direct_effect_params.clone(),
-                &input_buffer,
-                &direct_buffer,
+                &input_sa_buffer,
+                &direct_sa_buffer,
             );
 
             let listener_position = self.params.listener_position;
@@ -300,86 +265,41 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 num_channels: Some(order_to_num_channels(self.order)),
                 ..default()
             };
-            let ambisonics_encode_buffer =
-                audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                    &mut self.ambisonics_encode_container,
-                    &mut self.ambisonics_encode_ptrs,
-                    settings,
-                )
-                .unwrap();
+            let ambisonics_sa_buffer = AudioBuffer::try_borrowed_with_data_and_settings(
+                &mut self.ambisonics_buffer,
+                &mut self.ambisonics_ptrs,
+                settings,
+            )
+            .unwrap();
+
             let ambisonics_encode_effect_params = audionimbus::AmbisonicsEncodeEffectParams {
                 direction,
                 order: self.order,
             };
             let _effect_state = self.ambisonics_encode_effect.apply(
                 &ambisonics_encode_effect_params,
-                &direct_buffer,
-                &ambisonics_encode_buffer,
+                &direct_sa_buffer,
+                &ambisonics_sa_buffer,
             );
 
-            let reflection_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut self.reflections_container,
-                &mut self.reflections_ptrs,
-                settings,
-            )
-            .unwrap();
+            accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.direct_gain);
+
             let _effect_state = self.reflection_effect.apply(
                 reflection_effect_params,
-                &input_buffer,
-                &reflection_buffer,
+                &input_sa_buffer,
+                &ambisonics_sa_buffer,
             );
 
-            let reverb_buffer = audionimbus::AudioBuffer::try_borrowed_with_data_and_settings(
-                &mut self.reverb_container,
-                &mut self.reverb_ptrs,
-                settings,
-            )
-            .unwrap();
+            accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reflection_gain);
 
-            let _effect_state =
-                self.reverb_effect
-                    .apply(reverb_effect_params, &input_buffer, &reverb_buffer);
+            let _effect_state = self.reverb_effect.apply(
+                reverb_effect_params,
+                &input_sa_buffer,
+                &ambisonics_sa_buffer,
+            );
 
-            izip!(
-                ambisonics_encode_buffer.channels(),
-                reflection_buffer.channels(),
-                reverb_buffer.channels()
-            )
-            .map(|(direct_channel, reflection_channel, reverb_channel)| {
-                izip!(
-                    direct_channel.iter(),
-                    reflection_channel.iter(),
-                    reverb_channel.iter()
-                )
-                .map(|(direct_sample, reflections_sample, reverb_sample)| {
-                    direct_sample * self.params.direct_gain
-                        + reflections_sample * self.params.reflection_gain
-                        + reverb_sample * self.params.reverb_gain
-                })
-            })
-            .enumerate()
-            .for_each(|(i, channel)| {
-                self.output_buffer[i].extend(channel);
-            });
-            self.input_buffer.clear();
-        }
-
-        if !self.started_draining {
-            if (self.output_buffer[0].len() as f32) < self.max_block_frames.get() as f32 * 1.5 {
-                self.validate_capacity(start_capacity);
-                return ProcessStatus::ClearAllOutputs;
-            }
-            self.started_draining = true;
-        }
-
-        let output_len = proc_info.frames;
-        for (src, dst) in self.output_buffer.iter_mut().zip(outputs.iter_mut()) {
-            for (i, out) in src.drain(..output_len).enumerate() {
-                dst[i] = out;
-            }
-        }
-        self.validate_capacity(start_capacity);
-        ProcessStatus::OutputsModified
+            accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reverb_gain);
+        })
     }
 
     fn new_stream(
@@ -389,7 +309,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
     ) {
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
-            frame_size: self.frame_size,
+            frame_size: self.fixed_block.frame_size() as u32,
         };
 
         self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
@@ -424,21 +344,27 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             },
         )
         .unwrap();
-        self.output_buffer = self
-            .output_buffer
-            .drain(..)
-            .map(|old| {
-                let mut vec = Vec::with_capacity(stream_info.max_block_frames.get() as usize * 2);
-                vec.extend(old);
-                vec
-            })
-            .collect();
 
-        self.max_block_frames = stream_info.max_block_frames;
+        let fixed_block_size = self.fixed_block.inputs.channel_capacity;
+        let max_output_size = stream_info.max_block_frames.get() as usize;
+        self.fixed_block.resize(fixed_block_size, max_output_size);
     }
 }
 
 pub(crate) struct SimulationOutputEvent {
     pub(crate) flags: audionimbus::SimulationFlags,
     pub(crate) outputs: audionimbus::SimulationOutputs,
+}
+
+/// Accumulate a steam audio buffer into the output.
+fn accumulate_in_output(
+    sa_buffer: &AudioBuffer<&mut Vec<f32>, &mut [*mut f32]>,
+    outputs: &mut [&mut [f32]],
+    gain: f32,
+) {
+    for (i, channel) in sa_buffer.channels().enumerate() {
+        for (frame, sample) in channel.iter().enumerate() {
+            outputs[i][frame] += sample * gain;
+        }
+    }
 }

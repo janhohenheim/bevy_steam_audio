@@ -1388,6 +1388,7 @@ dependencies = [
  "crossbeam-channel",
  "firewheel",
  "itertools 0.14.0",
+ "prealloc_ref_vec",
 ]
 
 [[package]]
@@ -3938,6 +3939,12 @@ checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
  "zerocopy",
 ]
+
+[[package]]
+name = "prealloc_ref_vec"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc8ef58008dd864613f27febfbc66d194d1b26e077e6ad7445dce4eda932a573"
 
 [[package]]
 name = "presser"
