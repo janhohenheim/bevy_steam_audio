@@ -136,8 +136,12 @@ impl AudioNode for SteamAudioNode {
             direct_effect_params: None,
             reflection_effect_params: None,
             order: config.order,
-            ambisonics_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
-            ambisonics_buffer: vec![0.0; (config.frame_size * config.num_channels()) as usize],
+            ambisonics_ptrs: ChannelPtrs::new(config.num_channels() as usize),
+            ambisonics_buffer: core::iter::repeat_n(
+                0f32,
+                (config.frame_size * config.num_channels()) as usize,
+            )
+            .collect(),
         }
     }
 }
@@ -155,7 +159,7 @@ struct SteamAudioProcessor {
     // We might be able to use the scratch buffers for this, but
     // the ambisonic order may produce more channels than scratch
     // buffers.
-    ambisonics_buffer: Vec<f32>,
+    ambisonics_buffer: Box<[f32]>,
     ambisonics_ptrs: ChannelPtrs,
 }
 
@@ -357,8 +361,8 @@ pub(crate) struct SimulationOutputEvent {
 }
 
 /// Accumulate a steam audio buffer into the output.
-fn accumulate_in_output(
-    sa_buffer: &AudioBuffer<&mut Vec<f32>, &mut [*mut f32]>,
+fn accumulate_in_output<T: AsRef<[f32]>>(
+    sa_buffer: &AudioBuffer<T, &mut [*mut f32]>,
     outputs: &mut [&mut [f32]],
     gain: f32,
 ) {

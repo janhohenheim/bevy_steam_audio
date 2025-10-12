@@ -42,70 +42,15 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
         .connect(SteamAudioDecodeBus);
 }
 
-struct FlatChannels {
-    data: Box<[f32]>,
-    channel_count: usize,
-    channel_capacity: usize,
-    length: usize,
-}
-
-impl FlatChannels {
-    fn new(channel_count: usize, channel_capacity: usize) -> Self {
-        let total_len = channel_count * channel_capacity;
-        let data = iter::repeat_n(0f32, total_len).collect();
-
-        Self {
-            data,
-            channel_count,
-            channel_capacity,
-            length: 0,
-        }
-    }
-
-    fn index(&self, channel: usize, frame: usize) -> usize {
-        self.channel_capacity * channel + frame
-    }
-
-    fn get(&self, channel: usize, frame: usize) -> &f32 {
-        &self.data[self.index(channel, frame)]
-    }
-
-    fn get_mut(&mut self, channel: usize, frame: usize) -> &mut f32 {
-        &mut self.data[self.index(channel, frame)]
-    }
-
-    // TODO: this is likely much less efficient than extending
-    // each input vec by the correct amount in one go.
-    fn push_frame(&mut self, input_frame: usize, inputs: &[&[f32]]) {
-        for (channel, buffer) in inputs.iter().enumerate() {
-            *self.get_mut(channel, self.length) = buffer[input_frame];
-        }
-        self.length += 1;
-    }
-
-    fn is_full(&self) -> bool {
-        self.length == self.channel_capacity
-    }
-
-    fn clear(&mut self) {
-        self.length = 0;
-    }
-
-    fn fill_slices<'a>(&'a self, lens: &mut TmpRefVec<'a, [f32]>) {
-        for channel in 0..self.channel_count {
-            let start = self.index(channel, 0);
-            let len = self.length;
-
-            lens.push(&self.data[start..start + len]);
-        }
-    }
-}
-
+/// A helper to encapsulate processing audio in fixed blocks.
 struct FixedProcessBlock {
     inputs: FlatChannels,
+    // The outputs are represented as a collection of `Vec`
+    // because pusing beyond the expected bounds has a
+    // non-zero chance of happening.
     outputs: Box<[Vec<f32>]>,
-    input_lens: PreallocRefVec<[f32]>,
-    output_lens: PreallocRefVec<[f32]>,
+    input_slices: PreallocRefVec<[f32]>,
+    output_slices: PreallocRefVec<[f32]>,
 }
 
 impl FixedProcessBlock {
@@ -128,8 +73,8 @@ impl FixedProcessBlock {
         Self {
             inputs,
             outputs,
-            input_lens: PreallocRefVec::new(input_channels),
-            output_lens: PreallocRefVec::new(output_channels),
+            input_slices: PreallocRefVec::new(input_channels),
+            output_slices: PreallocRefVec::new(output_channels),
         }
     }
 
@@ -171,27 +116,69 @@ impl FixedProcessBlock {
     where
         F: FnMut(&[&[f32]], &mut [&mut [f32]]),
     {
-        for input_frame in 0..info.frames {
-            self.inputs.push_frame(input_frame, buffers.inputs);
-            if self.inputs.is_full() {
-                let mut temp_inputs = self.input_lens.get_tmp();
-                self.inputs.fill_slices(&mut temp_inputs);
+        let mut processed_frames = 0;
+        let mut remaining_inner_capacity = self.inputs.remaining_capacity();
+        let mut next_process_event = if info.frames >= remaining_inner_capacity {
+            Some(remaining_inner_capacity)
+        } else {
+            None
+        };
 
-                let mut temp_outputs = self.output_lens.get_tmp_mut();
-                for output in self.outputs.iter_mut() {
-                    let start = output.len();
-                    output.extend(iter::repeat_n(0f32, self.inputs.channel_capacity));
+        while let Some(event_index) = next_process_event {
+            let range = processed_frames..event_index;
 
-                    temp_outputs.push(&mut output[start..]);
-                }
-
-                process(&temp_inputs, &mut temp_outputs);
-                drop((temp_inputs, temp_outputs));
-
-                self.inputs.clear();
+            // The surrounding code essentially facilitates this. Rather
+            // then pushing one sample at a time to each channel, checking
+            // if the inputs are full, we pre-calculate exactly how many samples
+            // we need to fill the inputs. This allows us to copy over the data
+            // in bulk, which should be significantly more efficient.
+            for (inner_buffer, outer_buffer) in
+                self.inputs.iter_remaining_capacity().zip(buffers.inputs)
+            {
+                inner_buffer.copy_from_slice(&outer_buffer[range.clone()]);
             }
+            self.inputs.length = self.inputs.channel_capacity;
+
+            let mut temp_inputs = self.input_slices.get_tmp();
+            self.inputs.fill_slices(&mut temp_inputs);
+
+            let mut temp_outputs = self.output_slices.get_tmp_mut();
+            for output in self.outputs.iter_mut() {
+                let start = output.len();
+                output.extend(iter::repeat_n(0f32, self.inputs.channel_capacity));
+
+                temp_outputs.push(&mut output[start..]);
+            }
+
+            process(&temp_inputs, &mut temp_outputs);
+            drop((temp_inputs, temp_outputs));
+
+            self.inputs.clear();
+            processed_frames = range.end;
+
+            remaining_inner_capacity = self.inputs.remaining_capacity();
+            let remaining_outer_capacity = info.frames - processed_frames;
+            next_process_event = if remaining_outer_capacity >= remaining_inner_capacity {
+                Some(processed_frames + remaining_inner_capacity)
+            } else {
+                None
+            };
         }
 
+        // push remaining data
+        if processed_frames != info.frames {
+            let remaining_frames = info.frames - processed_frames;
+            for (inner_buffer, outer_buffer) in
+                self.inputs.iter_remaining_capacity().zip(buffers.inputs)
+            {
+                let inner_buffer = &mut inner_buffer[..remaining_frames];
+                inner_buffer.copy_from_slice(&outer_buffer[processed_frames..]);
+            }
+
+            self.inputs.length += remaining_frames;
+        }
+
+        // write outputs
         if let Some(inner_buffer) = self.outputs.get(0)
             && let Some(outer_buffer) = buffers.outputs.get(0)
             && inner_buffer.len() >= outer_buffer.len()
@@ -221,6 +208,81 @@ impl FixedProcessBlock {
         self.inputs.clear();
         for output in self.outputs.iter_mut() {
             output.clear();
+        }
+    }
+}
+
+/// A set of channels allocated as one slab.
+///
+/// Resizing is infrequent, so the extra stack size,
+/// potential unused capacity, and potential heap
+/// fragmentation of nested vectors is undesirable.
+struct FlatChannels {
+    data: Box<[f32]>,
+    channel_count: usize,
+    channel_capacity: usize,
+    length: usize,
+}
+
+impl FlatChannels {
+    fn new(channel_count: usize, channel_capacity: usize) -> Self {
+        let total_len = channel_count * channel_capacity;
+        let data = iter::repeat_n(0f32, total_len).collect();
+
+        Self {
+            data,
+            channel_count,
+            channel_capacity,
+            length: 0,
+        }
+    }
+
+    fn index(&self, channel: usize, frame: usize) -> usize {
+        self.channel_capacity * channel + frame
+    }
+
+    fn get(&self, channel: usize, frame: usize) -> &f32 {
+        &self.data[self.index(channel, frame)]
+    }
+
+    fn get_mut(&mut self, channel: usize, frame: usize) -> &mut f32 {
+        &mut self.data[self.index(channel, frame)]
+    }
+
+    fn iter_remaining_capacity(&mut self) -> impl Iterator<Item = &'_ mut [f32]> {
+        let length = self.length;
+        self.data
+            .chunks_mut(self.channel_capacity)
+            .map(move |slice| &mut slice[length..])
+    }
+
+    // // TODO: this is likely much less efficient than extending
+    // // each input vec by the correct amount in one go.
+    // fn push_frame(&mut self, input_frame: usize, inputs: &[&[f32]]) {
+    //     for (channel, buffer) in inputs.iter().enumerate() {
+    //         *self.get_mut(channel, self.length) = buffer[input_frame];
+    //     }
+    //     self.length += 1;
+    // }
+
+    // fn is_full(&self) -> bool {
+    //     self.length == self.channel_capacity
+    // }
+
+    fn remaining_capacity(&self) -> usize {
+        self.channel_capacity - self.length
+    }
+
+    fn clear(&mut self) {
+        self.length = 0;
+    }
+
+    fn fill_slices<'a>(&'a self, lens: &mut TmpRefVec<'a, [f32]>) {
+        for channel in 0..self.channel_count {
+            let start = self.index(channel, 0);
+            let len = self.length;
+
+            lens.push(&self.data[start..start + len]);
         }
     }
 }

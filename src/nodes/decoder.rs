@@ -107,7 +107,7 @@ impl AudioNode for SteamAudioDecodeNode {
             .unwrap(),
             order: config.order,
             frame_size: config.frame_size,
-            mix_ptrs: vec![std::ptr::null_mut(); config.num_channels() as usize].into(),
+            mix_ptrs: ChannelPtrs::new(config.num_channels() as usize),
         }
     }
 }
@@ -165,7 +165,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             // they will never be written to.
             let input_sa_buffer = unsafe {
                 audionimbus::AudioBuffer::<&[f32], _>::try_new_borrowed(
-                    self.mix_ptrs.as_mut_slice(),
+                    self.mix_ptrs.as_mut(),
                     self.frame_size,
                 )
                 .unwrap()
