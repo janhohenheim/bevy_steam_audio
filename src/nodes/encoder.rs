@@ -43,10 +43,13 @@ pub struct SteamAudioNode {
 impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
+            // User configurable
             direct_gain: 1.0,
             reflection_gain: 0.5,
             reverb_gain: 0.0,
             pathing_gain: 0.0,
+
+            // Set by the plugin
             source_position: Vec3::ZERO,
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
