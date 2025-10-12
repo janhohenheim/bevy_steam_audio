@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
+    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
 };
 
 fn main() {
@@ -38,7 +38,7 @@ fn setup(
         Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
         MeshMaterial3d(materials.add(Color::WHITE)),
         Transform::from_xyz(0.0, 0.0, -4.0),
-        MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC),
+        SteamAudioMesh::default(),
     ));
 
     // The sample player uses Steam Audio through the SteamAudioPool

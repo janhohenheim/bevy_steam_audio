@@ -64,6 +64,7 @@ impl Plugin for SteamAudioPlugin {
                 SteamAudioSystems::MeshLifecycle,
                 SteamAudioSystems::UpdateSources,
                 SteamAudioSystems::RunSimulator,
+                SteamAudioSystems::GenerateProbes,
             )
                 .chain()
                 .after(TransformSystems::Propagate),
@@ -84,6 +85,7 @@ impl Plugin for SteamAudioPlugin {
 pub enum SteamAudioSystems {
     CreateSimulator,
     MeshLifecycle,
+    GenerateProbes,
     UpdateSources,
     RunSimulator,
 }

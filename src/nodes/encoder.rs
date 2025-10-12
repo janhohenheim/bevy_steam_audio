@@ -3,7 +3,7 @@ use crate::{
     nodes::{FixedProcessBlock, reverb::SharedReverbData},
     prelude::*,
     settings::{SteamAudioQuality, order_to_num_channels},
-    wrapper::ChannelPtrs,
+    wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
 use audionimbus::AudioBuffer;
@@ -32,8 +32,10 @@ pub struct SteamAudioNode {
     pub direct_gain: f32,
     pub reflection_gain: f32,
     pub reverb_gain: f32,
+    pub pathing_gain: f32,
     pub source_position: Vec3,
-    pub listener_position: Vec3,
+    pub listener_position: AudionimbusCoordinateSystem,
+    pub pathing_available: bool,
 }
 
 impl Default for SteamAudioNode {
@@ -41,9 +43,13 @@ impl Default for SteamAudioNode {
         Self {
             direct_gain: 1.0,
             reflection_gain: 0.5,
-            reverb_gain: 0.1,
+            reverb_gain: 0.0,
+            pathing_gain: 0.0,
+
+            // Set by the plugin
             source_position: Vec3::ZERO,
-            listener_position: Vec3::ZERO,
+            listener_position: AudionimbusCoordinateSystem::default(),
+            pathing_available: false,
         }
     }
 }
@@ -93,6 +99,15 @@ impl AudioNode for SteamAudioNode {
             sampling_rate: cx.stream_info.sample_rate.get(),
             frame_size: config.frame_size,
         };
+        let hrtf = audionimbus::Hrtf::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::HrtfSettings {
+                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
+                ..default()
+            },
+        )
+        .unwrap();
         SteamAudioProcessor {
             params: self.clone(),
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
@@ -127,6 +142,15 @@ impl AudioNode for SteamAudioNode {
                 },
             )
             .unwrap(),
+            pathing_effect: audionimbus::PathEffect::try_new(
+                &STEAM_AUDIO_CONTEXT,
+                &settings,
+                &audionimbus::PathEffectSettings {
+                    max_order: config.order,
+                    spatialization: None,
+                },
+            )
+            .unwrap(),
             fixed_block: FixedProcessBlock::new(
                 config.frame_size as usize,
                 cx.stream_info.max_block_frames.get() as usize,
@@ -135,6 +159,7 @@ impl AudioNode for SteamAudioNode {
             ),
             direct_effect_params: None,
             reflection_effect_params: None,
+            pathing_effect_params: None,
             order: config.order,
             ambisonics_ptrs: ChannelPtrs::new(config.num_channels() as usize),
             ambisonics_buffer: core::iter::repeat_n(
@@ -142,6 +167,7 @@ impl AudioNode for SteamAudioNode {
                 (config.frame_size * config.num_channels()) as usize,
             )
             .collect(),
+            hrtf,
         }
     }
 }
@@ -153,14 +179,17 @@ struct SteamAudioProcessor {
     direct_effect: audionimbus::DirectEffect,
     reflection_effect: audionimbus::ReflectionEffect,
     reverb_effect: audionimbus::ReflectionEffect,
+    pathing_effect: audionimbus::PathEffect,
     fixed_block: FixedProcessBlock,
     direct_effect_params: Option<audionimbus::DirectEffectParams>,
     reflection_effect_params: Option<audionimbus::ReflectionEffectParams>,
+    pathing_effect_params: Option<audionimbus::PathEffectParams>,
     // We might be able to use the scratch buffers for this, but
     // the ambisonic order may produce more channels than scratch
     // buffers.
     ambisonics_buffer: Box<[f32]>,
     ambisonics_ptrs: ChannelPtrs,
+    hrtf: audionimbus::Hrtf,
 }
 
 impl SteamAudioProcessor {
@@ -195,6 +224,15 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 {
                     self.reflection_effect_params = Some(update.outputs.reflections().into_inner());
                 }
+                if self.pathing_effect_params.is_none()
+                    || update.flags.contains(audionimbus::SimulationFlags::PATHING)
+                {
+                    let mut pathing = update.outputs.pathing().into_inner();
+                    pathing.order = self.order;
+                    pathing.listener = self.params.listener_position.to_audionimbus();
+                    pathing.hrtf = self.hrtf.clone();
+                    self.pathing_effect_params = Some(pathing);
+                }
             }
         }
 
@@ -204,10 +242,12 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         let (
             Some(direct_effect_params),
             Some(reflection_effect_params),
+            Some(pathing_effect_params),
             Some(SharedReverbData(reverb_effect_params)),
         ) = (
             self.direct_effect_params.as_ref(),
             self.reflection_effect_params.as_ref(),
+            self.pathing_effect_params.as_ref(),
             extra.store.try_get::<SharedReverbData>(),
         )
         else {
@@ -262,7 +302,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             );
 
             let listener_position = self.params.listener_position;
-            let direction = source_position - listener_position;
+            let direction = source_position - listener_position.origin;
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
 
             let settings = audionimbus::AudioBufferSettings {
@@ -303,6 +343,16 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             );
 
             accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.reverb_gain);
+
+            if self.params.pathing_available {
+                let _effect_state = self.pathing_effect.apply(
+                    pathing_effect_params,
+                    &input_sa_buffer,
+                    &ambisonics_sa_buffer,
+                );
+
+                accumulate_in_output(&ambisonics_sa_buffer, outputs, self.params.pathing_gain);
+            }
         })
     }
 
@@ -311,10 +361,26 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         stream_info: &firewheel::StreamInfo,
         _context: &mut firewheel::node::ProcStreamCtx,
     ) {
+        // If these parameter don't change, there's no need to thrash the audio state.
+        if stream_info.sample_rate.get() == stream_info.prev_sample_rate.get()
+            && stream_info.max_block_frames.get() == self.fixed_block.max_block_frames() as u32
+        {
+            return;
+        }
+
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
             frame_size: self.fixed_block.frame_size() as u32,
         };
+        let hrtf = audionimbus::Hrtf::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::HrtfSettings {
+                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
+                ..default()
+            },
+        )
+        .unwrap();
 
         self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
@@ -348,10 +414,23 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             },
         )
         .unwrap();
+        self.pathing_effect = audionimbus::PathEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::PathEffectSettings {
+                max_order: self.order,
+                spatialization: Some(audionimbus::Spatialization {
+                    speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                    hrtf: &hrtf,
+                }),
+            },
+        )
+        .unwrap();
 
         let fixed_block_size = self.fixed_block.inputs.channel_capacity;
         let max_output_size = stream_info.max_block_frames.get() as usize;
         self.fixed_block.resize(fixed_block_size, max_output_size);
+        self.hrtf = hrtf;
     }
 }
 

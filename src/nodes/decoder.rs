@@ -209,6 +209,12 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         stream_info: &firewheel::StreamInfo,
         _context: &mut firewheel::node::ProcStreamCtx,
     ) {
+        if stream_info.sample_rate.get() == stream_info.prev_sample_rate.get()
+            && stream_info.max_block_frames.get() == self.fixed_block.max_block_frames() as u32
+        {
+            return;
+        }
+
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
             frame_size: self.frame_size,

@@ -200,6 +200,13 @@ impl FixedProcessBlock {
         self.inputs.channel_capacity
     }
 
+    pub fn max_block_frames(&self) -> usize {
+        self.outputs
+            .get(0)
+            .map(|o| o.capacity())
+            .unwrap_or_default()
+    }
+
     pub fn inputs_clear(&self) -> bool {
         self.inputs.length == 0
     }
@@ -255,19 +262,6 @@ impl FlatChannels {
             .chunks_mut(self.channel_capacity)
             .map(move |slice| &mut slice[length..])
     }
-
-    // // TODO: this is likely much less efficient than extending
-    // // each input vec by the correct amount in one go.
-    // fn push_frame(&mut self, input_frame: usize, inputs: &[&[f32]]) {
-    //     for (channel, buffer) in inputs.iter().enumerate() {
-    //         *self.get_mut(channel, self.length) = buffer[input_frame];
-    //     }
-    //     self.length += 1;
-    // }
-
-    // fn is_full(&self) -> bool {
-    //     self.length == self.channel_capacity
-    // }
 
     fn remaining_capacity(&self) -> usize {
         self.channel_capacity - self.length
