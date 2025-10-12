@@ -45,8 +45,8 @@ impl Default for SteamAudioNode {
         Self {
             direct_gain: 1.0,
             reflection_gain: 0.5,
-            reverb_gain: 0.1,
-            pathing_gain: 0.5,
+            reverb_gain: 0.0,
+            pathing_gain: 0.0,
             source_position: Vec3::ZERO,
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
