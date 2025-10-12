@@ -386,7 +386,7 @@ fn update_simulation(
                 ),
                 pathing_simulation: probes.as_ref().map(|probes| {
                     audionimbus::PathingSimulationParameters {
-                        pathing_probes: &probes,
+                        pathing_probes: probes,
                         visibility_radius: 1.0,
                         visibility_threshold: 0.1,
                         visibility_range: 1000.0,

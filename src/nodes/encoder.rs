@@ -519,7 +519,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             .collect();
 
         self.max_block_frames = stream_info.max_block_frames;
-        self.hrtf = hrtf
+        self.hrtf = hrtf;
     }
 }
 
