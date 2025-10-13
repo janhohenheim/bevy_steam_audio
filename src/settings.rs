@@ -239,3 +239,6 @@ impl Default for SteamAudioPathingSettings {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Resource)]
+pub struct SteamAudioHrtf(pub audionimbus::Hrtf);

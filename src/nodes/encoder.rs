@@ -52,12 +52,12 @@ impl Default for SteamAudioNode {
     }
 }
 
-#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Component, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
 #[component(on_add = on_add_steam_audio_node_config)]
 pub struct SteamAudioNodeConfig {
     pub(crate) order: u32,
     pub(crate) frame_size: u32,
+    pub(crate) hrtf: Option<audionimbus::Hrtf>,
 }
 
 fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
@@ -78,10 +78,9 @@ impl SteamAudioNodeConfig {
 impl AudioNode for SteamAudioNode {
     type Configuration = SteamAudioNodeConfig;
 
-    fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
+    fn info(&self, _config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
             .debug_name("Steam Audio node")
-            // 1 -> ambisonic order
             .channel_config(ChannelConfig {
                 num_inputs: ChannelCount::STEREO,
                 num_outputs: ChannelCount::STEREO,
@@ -97,15 +96,7 @@ impl AudioNode for SteamAudioNode {
             sampling_rate: cx.stream_info.sample_rate.get(),
             frame_size: config.frame_size,
         };
-        let hrtf = audionimbus::Hrtf::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &settings,
-            &audionimbus::HrtfSettings {
-                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
-                ..default()
-            },
-        )
-        .unwrap();
+        let hrtf = config.hrtf.clone().expect("Created an `AudioNode` before the audio stream was ready. Please wait until `SteamAudioReady` is triggered.");
         SteamAudioProcessor {
             params: self.clone(),
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
@@ -264,7 +255,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             return ProcessStatus::ClearAllOutputs;
         };
 
-        let [scratch_direct_left, scratch_direct_right, scratch_mono] =
+        let [scratch_stereo_left, scratch_stereo_right, scratch_mono] =
             extra.scratch_buffers.channels_mut::<3>();
         let frame_size = self.fixed_block.frame_size();
 
@@ -322,11 +313,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             };
             mono_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
 
-            assert!(scratch_direct_left.len() >= frame_size);
-            assert!(scratch_direct_right.len() >= frame_size);
+            assert!(scratch_stereo_left.len() >= frame_size);
+            assert!(scratch_stereo_right.len() >= frame_size);
             let mut channel_ptrs = [
-                scratch_direct_left.as_mut_ptr(),
-                scratch_direct_right.as_mut_ptr(),
+                scratch_stereo_left.as_mut_ptr(),
+                scratch_stereo_right.as_mut_ptr(),
             ];
 
             // Direct Effect
@@ -335,7 +326,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             //
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `direct_sa_buffer`.
-            let direct_sa_buffer = unsafe {
+            let scratch_stereo_sa_buffer = unsafe {
                 AudioBuffer::<&mut [f32], _>::try_new_borrowed(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
@@ -346,7 +337,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let _effect_state = self.direct_effect.apply(
                 &direct_effect_params.clone(),
                 &input_sa_buffer,
-                &direct_sa_buffer,
+                &scratch_stereo_sa_buffer,
             );
 
             // Binaural Effect
@@ -360,13 +351,16 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 peak_delays: None,
             };
 
-            let _effect_state =
-                self.binaural_effect
-                    .apply(&binaural_params, &direct_sa_buffer, &output_sa_buffer);
+            let _effect_state = self.binaural_effect.apply(
+                &binaural_params,
+                &scratch_stereo_sa_buffer,
+                &output_sa_buffer,
+            );
 
             // Reflection effect
             let settings = audionimbus::AudioBufferSettings {
                 num_channels: Some(order_to_num_channels(self.order)),
+                frame_size: Some(frame_size as u32),
                 ..default()
             };
             let ambisonics_sa_buffer = AudioBuffer::try_borrowed_with_data_and_settings(
@@ -392,10 +386,10 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let _effect_state = self.ambisonics_decode_effect.apply(
                 &ambisonics_decode_effect_params,
                 &ambisonics_sa_buffer,
-                &direct_sa_buffer,
+                &scratch_stereo_sa_buffer,
             );
 
-            output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &direct_sa_buffer);
+            output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer);
 
             // Pathing effect
             if self.params.pathing_available {
@@ -407,10 +401,10 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 let _effect_state = self.pathing_effect.apply(
                     pathing_effect_params,
                     &mono_sa_buffer,
-                    &direct_sa_buffer,
+                    &scratch_stereo_sa_buffer,
                 );
 
-                output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &direct_sa_buffer);
+                output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer);
             }
         });
 

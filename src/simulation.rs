@@ -15,7 +15,7 @@ use crate::{
     prelude::*,
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
-    settings::{SteamAudioEnabled, SteamAudioPathingSettings, SteamAudioQuality},
+    settings::{SteamAudioEnabled, SteamAudioHrtf, SteamAudioPathingSettings, SteamAudioQuality},
     sources::{AudionimbusSource, ListenerSource},
 };
 
@@ -30,7 +30,7 @@ use crate::wrapper::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        (recreate_simulator_on_settings_change, migrate_simulator)
+        (recreate_simulator_on_settings_change)
             .in_set(SteamAudioSystems::CreateSimulator)
             .run_if(resource_exists::<AudionimbusSimulator>),
     );
@@ -49,7 +49,7 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Event)]
-pub struct SimulatorReady;
+pub struct SteamAudioReady;
 
 #[derive(Resource)]
 struct AsyncSimulationSynchronization {
@@ -95,7 +95,6 @@ fn create_simulator_on_stream_restart(
 fn recreate_simulator_on_settings_change(
     quality: Res<SteamAudioQuality>,
     simulator: Res<AudionimbusSimulator>,
-    mut nodes: Query<&mut SteamAudioNodeConfig>,
     mut commands: Commands,
     mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
@@ -111,13 +110,6 @@ fn recreate_simulator_on_settings_change(
     commands.trigger(CreateSimulator {
         sampling_rate: simulator.sampling_rate,
     });
-
-    for mut node_config in nodes.iter_mut() {
-        *node_config = SteamAudioNodeConfig {
-            order: quality.order,
-            frame_size: quality.frame_size,
-        }
-    }
 }
 
 fn create_simulator(
@@ -125,7 +117,33 @@ fn create_simulator(
     mut commands: Commands,
     quality: Res<SteamAudioQuality>,
     root: Res<SteamAudioRootScene>,
+    sources: Query<&AudionimbusSource>,
+    probe_batch: Option<Res<SteamAudioProbeBatch>>,
+    mut nodes: Query<&mut SteamAudioNodeConfig>,
 ) -> Result {
+    let settings = audionimbus::AudioSettings {
+        sampling_rate: create.sampling_rate.into(),
+        frame_size: quality.frame_size,
+        ..default()
+    };
+    let hrtf = audionimbus::Hrtf::try_new(
+        &STEAM_AUDIO_CONTEXT,
+        &settings,
+        &audionimbus::HrtfSettings {
+            volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
+            ..default()
+        },
+    )
+    .unwrap();
+    for mut node_config in nodes.iter_mut() {
+        *node_config = SteamAudioNodeConfig {
+            order: quality.order,
+            frame_size: quality.frame_size,
+            hrtf: Some(hrtf.clone()),
+        }
+    }
+    commands.insert_resource(SteamAudioHrtf(hrtf));
+
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),
@@ -144,6 +162,13 @@ fn create_simulator(
         },
     )?;
     simulator.add_source(&listener_source);
+
+    for source in &sources {
+        simulator.add_source(source);
+    }
+    if let Some(probe_batch) = probe_batch {
+        simulator.add_probe_batch(&probe_batch);
+    }
 
     simulator.commit();
 
@@ -180,32 +205,7 @@ fn create_simulator(
     };
     AsyncComputeTaskPool::get().spawn(future).detach();
 
-    commands.trigger(SimulatorReady);
-    Ok(())
-}
-
-fn migrate_simulator(
-    mut simulator: ResMut<AudionimbusSimulator>,
-    sources: Query<&AudionimbusSource>,
-    probe_batch: Option<Res<SteamAudioProbeBatch>>,
-    root: Res<SteamAudioRootScene>,
-) -> Result {
-    if !simulator.is_changed() {
-        return Ok(());
-    }
-    let Ok(mut simulator) = simulator.try_write() else {
-        // simulator is in use by another thread, check next frame again.
-        simulator.set_changed();
-        return Ok(());
-    };
-    for source in &sources {
-        simulator.add_source(source);
-    }
-    simulator.set_scene(&root);
-    if let Some(probe_batch) = probe_batch {
-        simulator.add_probe_batch(&probe_batch);
-    }
-    simulator.commit();
+    commands.trigger(SteamAudioReady);
     Ok(())
 }
 

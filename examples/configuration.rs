@@ -63,9 +63,6 @@ fn setup(
             // boost the reflected sound relative to the direct sound
             direct_gain: 0.1,
             reflection_gain: 3.0,
-            // reverb is a kind of reflection, so it's enabled for this sampler by the flags above.
-            // but we can disable it by setting the gain to zero
-            reverb_gain: 0.0,
             ..default()
         }],
     ));
