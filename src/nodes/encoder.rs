@@ -440,6 +440,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 pathing_effect_params.listener = listener.to_audionimbus();
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
+                for coeff in &mut pathing_effect_params.eq_coeffs {
+                    *coeff = coeff.max(0.1)
+                }
 
                 apply_volume_ramp(
                     self.params.previous_pathing_gain,
