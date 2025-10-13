@@ -6,7 +6,6 @@ use bevy_platform::collections::HashMap;
 use crate::{
     prelude::*,
     scene::SteamAudioRootScene,
-    simulation::AudionimbusSimulator,
     wrapper::{ToSteamAudioMesh as _, ToSteamAudioTransform},
 };
 

@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use bevy::{
-    color::palettes::tailwind, input::common_conditions::input_just_pressed, prelude::*,
-    scene::SceneInstanceReady,
-};
+use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
