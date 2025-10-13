@@ -1,5 +1,5 @@
 use bevy_camera::primitives::Aabb;
-use bevy_math::bounding::{Aabb3d, BoundingVolume};
+use bevy_math::bounding::Aabb3d;
 
 use crate::{
     prelude::*, scene::SteamAudioRootScene, simulation::AudionimbusSimulator,
@@ -43,54 +43,60 @@ fn generate_probes(
     root: Res<SteamAudioRootScene>,
     mut commands: Commands,
     simulator: Res<AudionimbusSimulator>,
-    mut to_retry: Local<Vec<GenerateProbes>>,
+    probe_batch: Option<Res<SteamAudioProbeBatch>>,
 ) -> Result {
     let mut global_aabb = None;
-    for generate in generate_probes.drain() {
-        let Ok(mut simulator) = simulator.try_write() else {
-            // Simulator is in use, try again next frame
-            to_retry.push(generate);
-            continue;
-        };
-        let aabb = if let Some(aabb) = generate.aabb {
-            aabb
-        } else {
-            *global_aabb.get_or_insert_with(|| {
-                aabbs
-                    .iter()
-                    .fold(Aabb3d::new(Vec3A::ZERO, Vec3A::ZERO), |acc, aabb: &Aabb| {
-                        let min = acc.min.min(aabb.min());
-                        let max = acc.max.max(aabb.max());
-                        Aabb3d::new(min, max)
-                    })
-            })
-        };
-        let scale = aabb.max - aabb.min;
-        let translation = aabb.center();
-        let transform = GlobalTransform::from(
-            Transform::from_translation(translation.into()).with_scale(scale.into()),
-        )
-        .to_steam_audio_transform();
-
-        let params = audionimbus::ProbeGenerationParams::UniformFloor {
-            spacing: generate.spacing,
-            height: generate.height,
-            transform,
-        };
-        let mut array = audionimbus::ProbeArray::try_new(&STEAM_AUDIO_CONTEXT)?;
-        array.generate_probes(&root, &params);
-        if array.num_probes() == 0 {
-            error!("Failed to generate any probes. Is the scene empty?");
-            return Ok(());
-        }
-        let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
-        batch.add_probe_array(&array);
-        batch.commit();
-        simulator.add_probe_batch(&batch);
-        commands.insert_resource(SteamAudioProbeBatch(batch));
-    }
-    for generate in to_retry.drain(..) {
+    let Some(generate) = generate_probes.drain().last() else {
+        return Ok(());
+    };
+    let Ok(mut simulator) = simulator.try_write() else {
+        // Simulator is in use, try again next frame
         generate_probes.write(generate);
+        return Ok(());
+    };
+    let aabb = if let Some(aabb) = generate.aabb {
+        aabb
+    } else {
+        *global_aabb.get_or_insert_with(|| {
+            aabbs
+                .iter()
+                .fold(Aabb3d::new(Vec3A::ZERO, Vec3A::ZERO), |acc, aabb: &Aabb| {
+                    let min = acc.min.min(aabb.min());
+                    let max = acc.max.max(aabb.max());
+                    Aabb3d::new(min, max)
+                })
+        })
+    };
+    // Transform is applied to an *axis-aligned bounding box*
+    let scale = aabb.max - aabb.min;
+    let translation = aabb.min + scale / 2.0;
+    let transform = GlobalTransform::from(
+        Transform::from_translation(translation.into()).with_scale(scale.into()),
+    )
+    .to_steam_audio_transform();
+
+    let params = audionimbus::ProbeGenerationParams::UniformFloor {
+        spacing: generate.spacing,
+        height: generate.height,
+        transform,
+    };
+    let mut array = audionimbus::ProbeArray::try_new(&STEAM_AUDIO_CONTEXT)?;
+    array.generate_probes(&root, &params);
+    if array.num_probes() == 0 {
+        error!("Failed to generate any probes. Is the scene empty?");
+        return Ok(());
     }
+    let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
+    batch.add_probe_array(&array);
+    batch.commit();
+    if let Some(old_batch) = probe_batch.as_ref() {
+        simulator.remove_probe_batch(old_batch);
+    }
+    simulator.add_probe_batch(&batch);
+    // Not strictly needed here, but if we happen to have a write lock anyways, let's put it to use :)
+    simulator.commit();
+
+    commands.insert_resource(SteamAudioProbeBatch(batch));
+
     Ok(())
 }

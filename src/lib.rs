@@ -34,7 +34,6 @@ pub mod prelude {
 
     pub use crate::{
         SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, SteamAudioSamplePlayer,
-        nodes::SteamAudioDecodeBus,
         nodes::SteamAudioNode,
         nodes::SteamAudioPool,
         probes::GenerateProbes,
@@ -92,6 +91,7 @@ pub enum SteamAudioSystems {
 
 #[derive(Component, Reflect, Debug)]
 #[reflect(Component)]
+#[require(Transform, GlobalTransform)]
 pub struct SteamAudioListener;
 
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
