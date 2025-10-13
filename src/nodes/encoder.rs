@@ -437,7 +437,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // Pathing effect
             if self.params.pathing_available {
                 pathing_effect_params.order = self.quality.order;
-                pathing_effect_params.listener = self.params.listener_position.to_audionimbus();
+                pathing_effect_params.listener = listener.to_audionimbus();
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
 
