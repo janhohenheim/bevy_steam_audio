@@ -286,11 +286,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `input_sa_buffer`.
             let input_sa_buffer = unsafe {
-                AudioBuffer::<&[f32], _>::try_new_borrowed(
-                    channel_ptrs.as_mut_slice(),
-                    frame_size as u32,
-                )
-                .unwrap()
+                AudioBuffer::<&[f32], _>::try_new(channel_ptrs.as_mut_slice(), frame_size as u32)
+                    .unwrap()
             };
 
             assert_eq!(outputs[0].len(), frame_size);
@@ -303,7 +300,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `output_sa_buffer`.
             let mut output_sa_buffer = unsafe {
-                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                AudioBuffer::<&mut [f32], _>::try_new(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
                 )
@@ -316,7 +313,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `mono_sa_buffer`.
             let mut mono_reflect_sa_buffer = unsafe {
-                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                AudioBuffer::<&mut [f32], _>::try_new(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
                 )
@@ -330,7 +327,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `mono_sa_buffer`.
             let mut mono_pathing_sa_buffer = unsafe {
-                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                AudioBuffer::<&mut [f32], _>::try_new(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
                 )
@@ -352,7 +349,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `direct_sa_buffer`.
             let scratch_stereo_sa_buffer = unsafe {
-                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                AudioBuffer::<&mut [f32], _>::try_new(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
                 )

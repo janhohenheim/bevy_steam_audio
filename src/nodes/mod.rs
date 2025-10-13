@@ -1,4 +1,4 @@
-use crate::{nodes::reverb::ReverbDataNode, prelude::*, settings::SteamAudioQuality};
+use crate::{prelude::*, settings::SteamAudioQuality};
 use bevy_seedling::prelude::*;
 use core::iter;
 use firewheel::node::{ProcBuffers, ProcInfo, ProcessStatus};
@@ -21,8 +21,6 @@ pub(super) fn plugin(app: &mut App) {
 pub struct SteamAudioPool;
 
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
-    commands.spawn(ReverbDataNode);
-
     // Copy-paste this part if you want to set up your own pool!
     commands.spawn((
         SamplerPool(SteamAudioPool),

@@ -5,11 +5,11 @@ WIP of an integration between Bevy and Steam Audio via audionimbus. See <https:/
 ## Usage
 
 ```rust
-use bevy::prelude::*;
+use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, MeshSteamAudioMaterial},
+    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
 };
 
 fn main() {
@@ -34,24 +34,26 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // The camera is our listener using  SteamAudioListener
+    // The camera is our listener using SteamAudioListener
     commands.spawn((Camera3d::default(), SteamAudioListener));
 
-    // Some occluding geometry using MeshSteamAudioMaterial
+    // The sample player uses Steam Audio through the SteamAudioPool
+    // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        Transform::from_xyz(0.0, 0.0, -4.0),
-        MeshSteamAudioMaterial(SteamAudioMaterial::GENERIC),
+        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
+        SteamAudioPool,
+        Transform::from_xyz(-1.5, 0.0, -3.0),
+        Mesh3d(meshes.add(Sphere::new(0.2))),
+        MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
     ));
 
-    // The sample player uses Steam Audio through the SteamAudioPool
+    // Some occluding geometry using MeshSteamAudioMaterial
+    // Let's place it to the right of the listener, making reflected sound come from the right
     commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")),
-        SteamAudioPool,
-        Transform::from_xyz(6.0, 0.0, 0.0),
-        Mesh3d(meshes.add(Sphere::new(0.5))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
+        Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
+        MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
+        Transform::from_xyz(1.0, 0.0, 0.0),
+        SteamAudioMesh::default(),
     ));
 
     commands.spawn((

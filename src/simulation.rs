@@ -223,7 +223,9 @@ fn update_simulation(
         &SampleEffects,
     )>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
+    mut reverb_data: Option<
+        Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
+    >,
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
@@ -364,9 +366,11 @@ fn update_simulation(
     // Read the newest outputs
     let reverb_simulation_outputs =
         listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
-    reverb_data.push(NodeEventType::custom(
-        reverb_simulation_outputs.reflections().into_inner(),
-    ));
+    if let Some(reverb_data) = reverb_data.as_mut() {
+        reverb_data.push(NodeEventType::custom(
+            reverb_simulation_outputs.reflections().into_inner(),
+        ));
+    }
 
     for (mut source, source_settings, _transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;

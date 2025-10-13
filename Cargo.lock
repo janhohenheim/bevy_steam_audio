@@ -2283,7 +2283,7 @@ checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 [[package]]
 name = "firewheel"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "firewheel-core",
  "firewheel-cpal",
@@ -2296,7 +2296,7 @@ dependencies = [
 [[package]]
 name = "firewheel-core"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "arrayvec",
  "bevy_ecs",
@@ -2321,7 +2321,7 @@ dependencies = [
 [[package]]
 name = "firewheel-cpal"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "bevy_platform",
  "cpal",
@@ -2337,7 +2337,7 @@ dependencies = [
 [[package]]
 name = "firewheel-graph"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "arrayvec",
  "bevy_platform",
@@ -2353,7 +2353,7 @@ dependencies = [
 [[package]]
 name = "firewheel-macros"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -2365,7 +2365,7 @@ dependencies = [
 [[package]]
 name = "firewheel-nodes"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "bevy_ecs",
  "bevy_platform",
@@ -2378,7 +2378,7 @@ dependencies = [
 [[package]]
 name = "firewheel-pool"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/corvusprudens/firewheel?branch=freeverb#b10ead0ec059c04700b09da076bf02ebb81be82b"
+source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
 dependencies = [
  "firewheel-core",
  "firewheel-graph",
@@ -3137,9 +3137,9 @@ dependencies = [
 
 [[package]]
 name = "moxcms"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc7d85f3d741164e8972ad355e26ac6e51b20fcae5f911c7da8f2d8bbbb3f33"
+checksum = "c588e11a3082784af229e23e8e4ecf5bcc6fbe4f69101e0421ce8d79da7f0b40"
 dependencies = [
  "num-traits",
  "pxfm",
@@ -4010,9 +4010,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.12.1"
+version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a52d8d02cacdb176ef4678de6c052efb4b3da14b78e4db683a4252762be5433"
+checksum = "843bc0191f75f3e22651ae5f1e72939ab2f72a4bc30fa80a066bd66edefc24d4"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -4022,9 +4022,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.12"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "722166aa0d7438abbaa4d5cc2c649dac844e8c56d82fb3d33e9c34b5cd268fc6"
+checksum = "5276caf25ac86c8d810222b3dbb938e512c55c6831a10f3e6ed1c93b84041f1c"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -4033,9 +4033,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3160422bbd54dd5ecfdca71e5fd59b7b8fe2b1697ab2baf64f6d05dcc66d298"
+checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "renderdoc-sys"
@@ -4417,9 +4417,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "815c942ae7ee74737bb00f965fa5b5a2ac2ce7b6c01c0cc169bbeaf7abd5f5a9"
+checksum = "5773a4c030a19d9bfaa090f49746ff35c75dfddfa700df7a5939d5e076a57039"
 dependencies = [
  "lazy_static",
  "symphonia-bundle-flac",
@@ -4435,9 +4435,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-bundle-flac"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72e34f34298a7308d4397a6c7fbf5b84c5d491231ce3dd379707ba673ab3bd97"
+checksum = "c91565e180aea25d9b80a910c546802526ffd0072d0b8974e3ebe59b686c9976"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4447,9 +4447,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-codec-adpcm"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c94e1feac3327cd616e973d5be69ad36b3945f16b06f19c6773fc3ac0b426a0f"
+checksum = "2dddc50e2bbea4cfe027441eece77c46b9f319748605ab8f3443350129ddd07f"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4457,9 +4457,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-codec-pcm"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f395a67057c2ebc5e84d7bb1be71cce1a7ba99f64e0f0f0e303a03f79116f89b"
+checksum = "4e89d716c01541ad3ebe7c91ce4c8d38a7cf266a3f7b2f090b108fb0cb031d95"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4467,9 +4467,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-codec-vorbis"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a98765fb46a0a6732b007f7e2870c2129b6f78d87db7987e6533c8f164a9f30"
+checksum = "f025837c309cd69ffef572750b4a2257b59552c5399a5e49707cc5b1b85d1c73"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4478,9 +4478,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-core"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "798306779e3dc7d5231bd5691f5a813496dc79d3f56bf82e25789f2094e022c3"
+checksum = "ea00cc4f79b7f6bb7ff87eddc065a1066f3a43fe1875979056672c9ef948c2af"
 dependencies = [
  "arrayvec",
  "bitflags 1.3.2",
@@ -4492,9 +4492,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-format-mkv"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bb43471a100f7882dc9937395bd5ebee8329298e766250b15b3875652fe3d6f"
+checksum = "122d786d2c43a49beb6f397551b4a050d8229eaa54c7ddf9ee4b98899b8742d0"
 dependencies = [
  "lazy_static",
  "log",
@@ -4505,9 +4505,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-format-ogg"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada3505789516bcf00fc1157c67729eded428b455c27ca370e41f4d785bfa931"
+checksum = "2b4955c67c1ed3aa8ae8428d04ca8397fbef6a19b2b051e73b5da8b1435639cb"
 dependencies = [
  "log",
  "symphonia-core",
@@ -4517,9 +4517,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-format-riff"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05f7be232f962f937f4b7115cbe62c330929345434c834359425e043bfd15f50"
+checksum = "c2d7c3df0e7d94efb68401d81906eae73c02b40d5ec1a141962c592d0f11a96f"
 dependencies = [
  "extended",
  "log",
@@ -4529,9 +4529,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-metadata"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc622b9841a10089c5b18e99eb904f4341615d5aa55bbf4eedde1be721a4023c"
+checksum = "36306ff42b9ffe6e5afc99d49e121e0bd62fe79b9db7b9681d48e29fa19e6b16"
 dependencies = [
  "encoding_rs",
  "lazy_static",
@@ -4541,9 +4541,9 @@ dependencies = [
 
 [[package]]
 name = "symphonia-utils-xiph"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "484472580fa49991afda5f6550ece662237b00c6f562c7d9638d1b086ed010fe"
+checksum = "ee27c85ab799a338446b68eec77abf42e1a6f1bb490656e121c6e27bfbab9f16"
 dependencies = [
  "symphonia-core",
  "symphonia-metadata",
@@ -4551,9 +4551,9 @@ dependencies = [
 
 [[package]]
 name = "symphonium"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13a670087607467b5b3f42cc0cc5b18b1f120daf00c84b0e9da08d10d784a10a"
+checksum = "69db9c06d90bde1c7674b52bb15aded242a75d41ac91d6456f54a5240fe32e7a"
 dependencies = [
  "fast-interleave",
  "fixed-resample",

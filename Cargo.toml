@@ -123,4 +123,4 @@ opt-level = 3
 opt-level = 0
 
 [patch.crates-io]
-firewheel = { git = "https://github.com/corvusprudens/firewheel", branch = "freeverb" }
+firewheel = { git = "https://github.com/BillyDM/firewheel" }
