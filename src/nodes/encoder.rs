@@ -512,7 +512,27 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::PathEffectSettings {
                 max_order: self.quality.order,
-                spatialization: None,
+                spatialization: Some(audionimbus::Spatialization {
+                    speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                    hrtf: &self.hrtf,
+                }),
+            },
+        )
+        .unwrap();
+        self.binaural_effect = audionimbus::BinauralEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::BinauralEffectSettings { hrtf: &self.hrtf },
+        )
+        .unwrap();
+
+        self.ambisonics_decode_effect = audionimbus::AmbisonicsDecodeEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::AmbisonicsDecodeEffectSettings {
+                max_order: self.quality.order,
+                speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                hrtf: &self.hrtf,
             },
         )
         .unwrap();
