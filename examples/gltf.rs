@@ -54,10 +54,7 @@ fn setup(
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
         SteamAudioPool,
-        sample_effects![SteamAudioNode {
-            reverb_gain: 0.01,
-            ..default()
-        }],
+        sample_effects![SteamAudioNode { ..default() }],
         audio_pos,
         Mesh3d(meshes.add(Sphere::new(0.5))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400).with_alpha(0.5))),

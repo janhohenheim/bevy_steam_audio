@@ -33,14 +33,6 @@ fn setup(
     // The camera is our listener using  SteamAudioListener
     commands.spawn((Camera3d::default(), SteamAudioListener));
 
-    // Some occluding geometry using MeshSteamAudioMaterial
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
-        Transform::from_xyz(0.0, 0.0, -4.0),
-        SteamAudioMesh::default(),
-    ));
-
     // The sample player uses Steam Audio through the SteamAudioPool
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")),
@@ -62,9 +54,14 @@ fn rotate_audio(
     camera: Single<&Transform, (With<Camera>, Without<SamplePlayer>)>,
     time: Res<Time>,
 ) {
-    let seconds_for_one_orbit = 8.0;
-    sample_player.rotate_around(
+    let speed = 1.0;
+    let angle_frac = (time.elapsed_secs() * speed).sin();
+    let max_angle = TAU / 4.0;
+
+    let mut base_position = Transform::from_xyz(3.0, 0.0, -6.0);
+    base_position.rotate_around(
         camera.translation,
-        Quat::from_rotation_y(TAU / seconds_for_one_orbit * time.delta_secs()),
+        Quat::from_rotation_x(max_angle * angle_frac),
     );
+    **sample_player = base_position;
 }

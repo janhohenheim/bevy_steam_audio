@@ -9,8 +9,8 @@ use std::{
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        SimulationOutputEvent, SteamAudioDecodeNodeConfig, SteamAudioNodeConfig,
-        decoder::SteamAudioDecodeNode, encoder::SteamAudioNode, reverb::ReverbDataNode,
+        SimulationOutputEvent, SteamAudioNodeConfig, encoder::SteamAudioNode,
+        reverb::ReverbDataNode,
     },
     prelude::*,
     probes::SteamAudioProbeBatch,
@@ -96,7 +96,6 @@ fn recreate_simulator_on_settings_change(
     quality: Res<SteamAudioQuality>,
     simulator: Res<AudionimbusSimulator>,
     mut nodes: Query<&mut SteamAudioNodeConfig>,
-    mut decode_nodes: Query<&mut SteamAudioDecodeNodeConfig>,
     mut commands: Commands,
     mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
@@ -118,13 +117,6 @@ fn recreate_simulator_on_settings_change(
             order: quality.order,
             frame_size: quality.frame_size,
         }
-    }
-
-    for mut decode_node_config in decode_nodes.iter_mut() {
-        *decode_node_config = SteamAudioDecodeNodeConfig {
-            order: quality.order,
-            frame_size: quality.frame_size,
-        };
     }
 }
 
@@ -233,7 +225,7 @@ fn update_simulation(
         &SampleEffects,
     )>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut decode_node: Single<&mut SteamAudioDecodeNode>,
+    //mut decode_node: Single<&mut SteamAudioDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
@@ -255,7 +247,7 @@ fn update_simulation(
             .commit();
     }
 
-    decode_node.listener_orientation = listener_orientation;
+    //decode_node.listener_orientation = listener_orientation;
 
     let listener_inputs = audionimbus::SimulationInputs {
         source: listener_orientation.to_audionimbus(),
