@@ -47,23 +47,21 @@ impl Default for SteamAudioNode {
 #[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
 #[component(on_add = on_add_steam_audio_node_config)]
 pub struct SteamAudioNodeConfig {
-    pub(crate) order: u32,
-    pub(crate) frame_size: u32,
     pub(crate) hrtf: Option<audionimbus::Hrtf>,
+    pub(crate) quality: SteamAudioQuality,
 }
 
 fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let quality = *world.resource::<SteamAudioQuality>();
     let mut entity = world.entity_mut(ctx.entity);
     let mut config = entity.get_mut::<SteamAudioNodeConfig>().unwrap();
-    config.order = quality.order;
-    config.frame_size = quality.frame_size;
+    config.quality = quality;
 }
 
 impl SteamAudioNodeConfig {
     #[inline]
     fn num_channels(&self) -> u32 {
-        order_to_num_channels(self.order)
+        order_to_num_channels(self.quality.order)
     }
 }
 
@@ -86,7 +84,7 @@ impl AudioNode for SteamAudioNode {
     ) -> impl AudioNodeProcessor {
         let settings = audionimbus::AudioSettings {
             sampling_rate: cx.stream_info.sample_rate.get(),
-            frame_size: config.frame_size,
+            frame_size: config.quality.frame_size,
         };
         let hrtf = config.hrtf.clone().expect("Created an `AudioNode` before the audio stream was ready. Please wait until `SteamAudioReady` is triggered.");
         SteamAudioProcessor {
@@ -95,7 +93,7 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::AmbisonicsEncodeEffectSettings {
-                    max_order: config.order,
+                    max_order: config.quality.order,
                 },
             )
             .unwrap(),
@@ -109,7 +107,13 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::ReflectionEffectSettings::Convolution {
-                    impulse_response_size: 2 * settings.sampling_rate,
+                    impulse_response_size: (config
+                        .quality
+                        .reflections
+                        .impulse_duration
+                        .as_secs_f32()
+                        * settings.sampling_rate as f32)
+                        .ceil() as u32,
                     num_channels: config.num_channels(),
                 },
             )
@@ -124,7 +128,7 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::PathEffectSettings {
-                    max_order: config.order,
+                    max_order: config.quality.order,
                     spatialization: Some(audionimbus::Spatialization {
                         speaker_layout: audionimbus::SpeakerLayout::Stereo,
                         hrtf: &hrtf,
@@ -136,14 +140,14 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::AmbisonicsDecodeEffectSettings {
-                    max_order: config.order,
+                    max_order: config.quality.order,
                     speaker_layout: audionimbus::SpeakerLayout::Stereo,
                     hrtf: &hrtf,
                 },
             )
             .unwrap(),
             fixed_block: FixedProcessBlock::new(
-                config.frame_size as usize,
+                config.quality.frame_size as usize,
                 cx.stream_info.max_block_frames.get() as usize,
                 2,
                 2,
@@ -151,12 +155,12 @@ impl AudioNode for SteamAudioNode {
             direct_effect_params: None,
             reflection_effect_params: None,
             pathing_effect_params: None,
-            order: config.order,
+            quality: config.quality,
             hrtf,
             ambisonics_ptrs: ChannelPtrs::new(config.num_channels() as usize),
             ambisonics_buffer: core::iter::repeat_n(
                 0f32,
-                (config.frame_size * config.num_channels()) as usize,
+                (config.quality.frame_size * config.num_channels()) as usize,
             )
             .collect(),
         }
@@ -164,7 +168,7 @@ impl AudioNode for SteamAudioNode {
 }
 
 struct SteamAudioProcessor {
-    order: u32,
+    quality: SteamAudioQuality,
     params: SteamAudioNode,
     ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
@@ -187,7 +191,7 @@ struct SteamAudioProcessor {
 impl SteamAudioProcessor {
     #[inline]
     fn num_channels(&self) -> u32 {
-        order_to_num_channels(self.order)
+        order_to_num_channels(self.quality.order)
     }
 }
 
@@ -351,7 +355,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             // Reflection effect
             let settings = audionimbus::AudioBufferSettings {
-                num_channels: Some(order_to_num_channels(self.order)),
+                num_channels: Some(self.quality.num_channels()),
                 frame_size: Some(frame_size as u32),
                 ..default()
             };
@@ -370,7 +374,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             // Decode ambisonics
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
-                order: self.order,
+                order: self.quality.order,
                 hrtf: &self.hrtf,
                 orientation: listener.to_audionimbus(),
                 binaural: true,
@@ -385,7 +389,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             // Pathing effect
             if self.params.pathing_available {
-                pathing_effect_params.order = self.order;
+                pathing_effect_params.order = self.quality.order;
                 pathing_effect_params.listener = self.params.listener_position.to_audionimbus();
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
@@ -431,7 +435,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::AmbisonicsEncodeEffectSettings {
-                max_order: self.order,
+                max_order: self.quality.order,
             },
         )
         .unwrap();
@@ -445,7 +449,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
-                impulse_response_size: 2 * settings.sampling_rate,
+                impulse_response_size: (self.quality.reflections.impulse_duration.as_secs_f32()
+                    * settings.sampling_rate as f32)
+                    .ceil() as u32,
                 num_channels: self.num_channels(),
             },
         )
@@ -454,7 +460,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::PathEffectSettings {
-                max_order: self.order,
+                max_order: self.quality.order,
                 spatialization: None,
             },
         )

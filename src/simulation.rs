@@ -136,8 +136,7 @@ fn create_simulator(
     .unwrap();
     for mut node_config in nodes.iter_mut() {
         *node_config = SteamAudioNodeConfig {
-            order: quality.order,
-            frame_size: quality.frame_size,
+            quality: quality.clone(),
             hrtf: Some(hrtf.clone()),
         }
     }
