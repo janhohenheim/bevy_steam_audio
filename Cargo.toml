@@ -90,6 +90,11 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "zstd_rust",
   "dynamic_linking"
 ] }
+criterion = { version = "0.7", features = ["html_reports"] }
+
+[[bench]]
+name = "full_app"
+harness = false
 
 [lints.rust]
 #missing_docs = "warn"
