@@ -124,7 +124,6 @@ fn create_simulator(
     let settings = audionimbus::AudioSettings {
         sampling_rate: create.sampling_rate.into(),
         frame_size: quality.frame_size,
-        ..default()
     };
     let hrtf = audionimbus::Hrtf::try_new(
         &STEAM_AUDIO_CONTEXT,

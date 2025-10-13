@@ -2,10 +2,7 @@ use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dBackendPlugin};
 
 fn main() {
     App::new()

@@ -6,7 +6,7 @@ use crate::{
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
-use audionimbus::{AudioBuffer, Spatialization};
+use audionimbus::AudioBuffer;
 use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
@@ -29,9 +29,6 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SteamAudioNode {
-    pub direct_gain: f32,
-    pub reflection_gain: f32,
-    pub pathing_gain: f32,
     pub source_position: Vec3,
     pub listener_position: AudionimbusCoordinateSystem,
     pub pathing_available: bool,
@@ -40,11 +37,6 @@ pub struct SteamAudioNode {
 impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
-            direct_gain: 1.0,
-            reflection_gain: 0.5,
-            pathing_gain: 0.0,
-
-            // Set by the plugin
             source_position: Vec3::ZERO,
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
@@ -344,7 +336,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let direction = source_position - listener.origin;
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
             let binaural_params = audionimbus::BinauralEffectParams {
-                direction: direction,
+                direction,
                 interpolation: audionimbus::HrtfInterpolation::Nearest,
                 spatial_blend: 1.0,
                 hrtf: &self.hrtf,

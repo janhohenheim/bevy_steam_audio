@@ -60,9 +60,7 @@ fn setup(
         },
         // The `SteamAudioNode` tunes the parameters used when processing the audio.
         sample_effects![SteamAudioNode {
-            // boost the reflected sound relative to the direct sound
-            direct_gain: 0.1,
-            reflection_gain: 3.0,
+            // TODO: move those flags down here!
             ..default()
         }],
     ));

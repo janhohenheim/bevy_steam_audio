@@ -37,7 +37,7 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
 }
 
 /// A helper to encapsulate processing audio in fixed blocks.
-struct FixedProcessBlock {
+pub struct FixedProcessBlock {
     inputs: FlatChannels,
     // The outputs are represented as a collection of `Vec`
     // because pusing beyond the expected bounds has a
