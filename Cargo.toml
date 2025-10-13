@@ -13,8 +13,8 @@ exclude = ["./assets/"]
 auto-install = ["audionimbus/auto-install"]
 
 [dependencies]
-audionimbus = { version = "0.8.3", path = "../audionimbus/audionimbus",  default-features = false }
-audionimbus-sys = { version = "4.7.1-rc.1", path = "../audionimbus/audionimbus-sys", default-features = false }
+audionimbus = { version = "0.9.0", default-features = false }
+audionimbus-sys = { version = "4.7.1-rc.1",  default-features = false }
 
 bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0", default-features = false }
 bevy_app = { version = "0.17", default-features = false }
