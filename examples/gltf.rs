@@ -52,7 +52,7 @@ fn setup(
         SteamAudioListener,
     ));
     commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")),
+        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
         sample_effects![SteamAudioNode { ..default() }],
         audio_pos,

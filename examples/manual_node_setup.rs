@@ -56,7 +56,7 @@ fn setup(
     ));
 
     commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")),
+        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         Transform::from_xyz(6.0, 0.0, 0.0),
         Mesh3d(meshes.add(Sphere::new(0.5))),
         MeshMaterial3d(materials.add(Color::WHITE)),

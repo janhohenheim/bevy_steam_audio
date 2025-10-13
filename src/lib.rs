@@ -92,6 +92,7 @@ pub enum SteamAudioSystems {
 
 #[derive(Component, Reflect, Debug)]
 #[reflect(Component)]
+#[require(Transform, GlobalTransform)]
 pub struct SteamAudioListener;
 
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {

@@ -1,8 +1,9 @@
-use std::f32::consts::TAU;
-
-use bevy::prelude::*;
+use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dBackendPlugin};
+use bevy_steam_audio::{
+    prelude::*,
+    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+};
 
 fn main() {
     App::new()
@@ -17,7 +18,6 @@ fn main() {
             Mesh3dBackendPlugin::default(),
         ))
         .add_systems(Startup, setup)
-        .add_systems(Update, rotate_audio)
         .run();
 }
 
@@ -27,38 +27,30 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // The camera is our listener using  SteamAudioListener
+    // The camera is our listener using SteamAudioListener
     commands.spawn((Camera3d::default(), SteamAudioListener));
 
     // The sample player uses Steam Audio through the SteamAudioPool
+    // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")),
+        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
-        Transform::from_xyz(6.0, 0.0, 0.0),
-        Mesh3d(meshes.add(Sphere::new(0.5))),
+        Transform::from_xyz(-1.5, 0.0, -3.0),
+        Mesh3d(meshes.add(Sphere::new(0.2))),
         MeshMaterial3d(materials.add(Color::WHITE)),
+    ));
+
+    // Some occluding geometry using MeshSteamAudioMaterial
+    // Let's place it to the right of the listener, making reflected sound come from the right
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
+        MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
+        Transform::from_xyz(1.0, 0.0, 0.0),
+        SteamAudioMesh::default(),
     ));
 
     commands.spawn((
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
     ));
-}
-
-// Rotate the sample player around the camera to demonstrate Steam Audio's capabilities
-fn rotate_audio(
-    mut sample_player: Single<&mut Transform, With<SamplePlayer>>,
-    camera: Single<&Transform, (With<Camera>, Without<SamplePlayer>)>,
-    time: Res<Time>,
-) {
-    let speed = 1.0;
-    let angle_frac = (time.elapsed_secs() * speed).sin();
-    let max_angle = TAU / 4.0;
-
-    let mut base_position = Transform::from_xyz(3.0, 0.0, -6.0);
-    base_position.rotate_around(
-        camera.translation,
-        Quat::from_rotation_x(max_angle * angle_frac),
-    );
-    **sample_player = base_position;
 }
