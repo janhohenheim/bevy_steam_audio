@@ -3,7 +3,9 @@ use std::time::Duration;
 use crate::{prelude::*, wrapper::AudionimbusCoordinateSystem};
 
 pub(super) fn plugin(app: &mut App) {
-    let _ = app;
+    app.init_resource::<SteamAudioEnabled>()
+        .init_resource::<SteamAudioQuality>()
+        .init_resource::<SteamAudioPathingSettings>();
 }
 
 #[derive(Debug, Clone, PartialEq, Reflect, Resource)]
@@ -212,6 +214,28 @@ impl Default for SteamAudioEnabled {
                 0.1,
                 TimerMode::Once,
             )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
+#[reflect(Resource)]
+pub struct SteamAudioPathingSettings {
+    /// When testing for mutual visibility between a pair of probes, each probe is treated as a sphere of this radius (in meters), and point samples are generated within this sphere.
+    pub visibility_radius: f32,
+    /// When tracing rays to test for mutual visibility between a pair of probes, the fraction of rays that are unoccluded must be greater than this threshold for the pair of probes to be considered mutually visible.
+    pub visibility_threshold: f32,
+    /// If the distance between two probes is greater than this value, the probes are not considered mutually visible.
+    /// Increasing this value can result in simpler paths, at the cost of increased CPU usage.
+    pub visibility_range: f32,
+}
+
+impl Default for SteamAudioPathingSettings {
+    fn default() -> Self {
+        Self {
+            visibility_radius: 1.0,
+            visibility_threshold: 0.1,
+            visibility_range: 1000.0,
         }
     }
 }

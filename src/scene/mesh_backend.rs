@@ -6,6 +6,7 @@ use bevy_platform::collections::HashMap;
 use crate::{
     prelude::*,
     scene::SteamAudioRootScene,
+    simulation::AudionimbusSimulator,
     wrapper::{ToSteamAudioMesh as _, ToSteamAudioTransform},
 };
 
@@ -122,6 +123,11 @@ fn spawn_new_steam_audio_meshes(
     names: Query<NameOrEntity>,
 ) -> Result {
     errors.clear();
+    if to_add.is_empty() {
+        return Ok(());
+    }
+
+    // We don't actually need the simulator, but calling `root.commit()` is not allowed while a simulation is running.
 
     to_add.retain(|entity| {
         let name = names.get(*entity).unwrap();
@@ -186,6 +192,7 @@ fn spawn_new_steam_audio_meshes(
                 .entity(*entity)
                 .try_insert(InstancedMesh(instanced_mesh));
         } else {
+            let mesh = mesh.clone().transformed_by(transform.compute_transform());
             let static_mesh = match mesh.to_steam_audio_mesh(&root, material.material) {
                 Ok(mesh) => mesh,
                 Err(err) => {
@@ -193,13 +200,13 @@ fn spawn_new_steam_audio_meshes(
                     return false;
                 }
             };
-            info!("Static mesh created");
             root.add_static_mesh(static_mesh);
         }
-        root.commit();
 
         false
     });
+    // Do not call root.commit(), it's not safe during running simulations
+
     if !errors.is_empty() {
         Err(errors.join("\n").into())
     } else {

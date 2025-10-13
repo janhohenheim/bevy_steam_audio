@@ -15,7 +15,7 @@ use crate::{
     prelude::*,
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
-    settings::{SteamAudioEnabled, SteamAudioQuality},
+    settings::{SteamAudioEnabled, SteamAudioPathingSettings, SteamAudioQuality},
     sources::{AudionimbusSource, ListenerSource},
 };
 
@@ -43,8 +43,6 @@ pub(super) fn plugin(app: &mut App) {
                     .and(resource_exists::<AudionimbusSimulator>),
             ),
     );
-    app.init_resource::<SteamAudioEnabled>()
-        .init_resource::<SteamAudioQuality>();
     app.add_observer(create_simulator)
         .add_observer(create_simulator_on_stream_start)
         .add_observer(create_simulator_on_stream_restart);
@@ -237,6 +235,7 @@ fn update_simulation(
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
     mut decode_node: Single<&mut SteamAudioDecodeNode>,
     mut reverb_data: Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
+    pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
 ) -> Result {
@@ -248,7 +247,6 @@ fn update_simulation(
     let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
 
     if synchro.complete.load(Ordering::SeqCst) {
-        // todo: only commit scene when needed
         root.commit();
         // This should never fail unless there's a bug, as this branch should only be called when the reflection thread is idle.
         simulator
@@ -262,13 +260,15 @@ fn update_simulation(
     let listener_inputs = audionimbus::SimulationInputs {
         source: listener_orientation.to_audionimbus(),
         direct_simulation: None,
-        reflections_simulation: None,
+        reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
+            baked_data_identifier: None,
+        }),
         pathing_simulation: probes.as_ref().map(|probes| {
             audionimbus::PathingSimulationParameters {
                 pathing_probes: probes,
-                visibility_radius: 1.0,
-                visibility_threshold: 0.1,
-                visibility_range: 1000.0,
+                visibility_radius: pathing_settings.visibility_radius,
+                visibility_threshold: pathing_settings.visibility_threshold,
+                visibility_range: pathing_settings.visibility_range,
                 pathing_order: quality.order,
                 enable_validation: true,
                 find_alternate_paths: true,
@@ -276,6 +276,7 @@ fn update_simulation(
             }
         }),
     };
+    // TODO: make this configurable
     let source_inputs = |orientation: AudionimbusCoordinateSystem| audionimbus::SimulationInputs {
         source: orientation.to_audionimbus(),
         direct_simulation: Some(audionimbus::DirectSimulationParameters {
@@ -284,7 +285,6 @@ fn update_simulation(
             directivity: Some(audionimbus::Directivity::default()),
             occlusion: Some(audionimbus::Occlusion {
                 transmission: Some(audionimbus::TransmissionParameters {
-                    // TODO: make this configurable per source
                     num_transmission_rays: 4,
                 }),
                 algorithm: audionimbus::OcclusionAlgorithm::Raycast,
@@ -294,12 +294,11 @@ fn update_simulation(
             baked_data_identifier: None,
         }),
         pathing_simulation: probes.as_ref().map(|probes| {
-            // todo: use global settings
             audionimbus::PathingSimulationParameters {
                 pathing_probes: probes,
-                visibility_radius: 1.0,
-                visibility_threshold: 0.1,
-                visibility_range: 1000.0,
+                visibility_radius: pathing_settings.visibility_radius,
+                visibility_threshold: pathing_settings.visibility_threshold,
+                visibility_range: pathing_settings.visibility_range,
                 pathing_order: quality.order,
                 enable_validation: true,
                 find_alternate_paths: true,

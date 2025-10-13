@@ -27,7 +27,7 @@ pub struct GenerateProbes {
 impl Default for GenerateProbes {
     fn default() -> Self {
         Self {
-            spacing: 2.0,
+            spacing: 5.0,
             height: 1.5,
             aabb: None,
         }
