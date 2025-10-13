@@ -107,13 +107,10 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::ReflectionEffectSettings::Convolution {
-                    impulse_response_size: (config
-                        .quality
-                        .reflections
-                        .impulse_duration
-                        .as_secs_f32()
-                        * settings.sampling_rate as f32)
-                        .ceil() as u32,
+                    impulse_response_size: impulse_response_size(
+                        config.quality,
+                        settings.sampling_rate,
+                    ),
                     num_channels: config.num_channels(),
                 },
             )
@@ -240,7 +237,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             Some(pathing_effect_params),
         ) = (
             self.direct_effect_params.as_ref(),
-            self.reflection_effect_params.as_ref(),
+            self.reflection_effect_params.as_mut(),
             self.pathing_effect_params.as_mut(),
         )
         else {
@@ -365,6 +362,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 settings,
             )
             .unwrap();
+            reflection_effect_params.reflection_effect_type =
+                audionimbus::ReflectionEffectType::Convolution;
+            reflection_effect_params.num_channels = self.quality.num_channels();
+            reflection_effect_params.impulse_response_size =
+                impulse_response_size(self.quality, proc_info.sample_rate.into());
 
             let _effect_state = self.reflection_effect.apply(
                 reflection_effect_params,
@@ -449,9 +451,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
-                impulse_response_size: (self.quality.reflections.impulse_duration.as_secs_f32()
-                    * settings.sampling_rate as f32)
-                    .ceil() as u32,
+                impulse_response_size: impulse_response_size(self.quality, settings.sampling_rate),
                 num_channels: self.num_channels(),
             },
         )
@@ -475,4 +475,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 pub(crate) struct SimulationOutputEvent {
     pub(crate) flags: audionimbus::SimulationFlags,
     pub(crate) outputs: audionimbus::SimulationOutputs,
+}
+
+fn impulse_response_size(quality: SteamAudioQuality, sampling_rate: u32) -> u32 {
+    (quality.reflections.impulse_duration.as_secs_f32() * sampling_rate as f32).ceil() as u32
 }
