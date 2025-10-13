@@ -29,6 +29,13 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SteamAudioNode {
+    pub direct_gain: f32,
+    pub reflection_gain: f32,
+    pub pathing_gain: f32,
+
+    pub previous_direct_gain: f32,
+    pub previous_reflection_gain: f32,
+    pub previous_pathing_gain: f32,
     pub source_position: Vec3,
     pub listener_position: AudionimbusCoordinateSystem,
     pub pathing_available: bool,
@@ -37,6 +44,13 @@ pub struct SteamAudioNode {
 impl Default for SteamAudioNode {
     fn default() -> Self {
         Self {
+            direct_gain: 1.0,
+            reflection_gain: 1.0,
+            pathing_gain: 1.0,
+
+            previous_direct_gain: 0.0,
+            previous_reflection_gain: 0.0,
+            previous_pathing_gain: 0.0,
             source_position: Vec3::ZERO,
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
@@ -248,8 +262,12 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             return ProcessStatus::ClearAllOutputs;
         };
 
-        let [scratch_stereo_left, scratch_stereo_right, scratch_mono] =
-            extra.scratch_buffers.channels_mut::<3>();
+        let [
+            scratch_stereo_left,
+            scratch_stereo_right,
+            scratch_mono_reflect,
+            scratch_mono_pathing,
+        ] = extra.scratch_buffers.channels_mut();
         let frame_size = self.fixed_block.frame_size();
 
         let fixed_block = &mut self.fixed_block;
@@ -292,19 +310,33 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .unwrap()
             };
 
-            assert!(scratch_mono.len() >= frame_size);
-            let mut channel_ptrs = [scratch_mono.as_mut_ptr()];
+            assert!(scratch_mono_reflect.len() >= frame_size);
+            let mut channel_ptrs = [scratch_mono_reflect.as_mut_ptr()];
             // SAFETY:
             // `channel_ptrs` points to `frame_size` floats, whose lifetime
             // will outlast `mono_sa_buffer`.
-            let mut mono_sa_buffer = unsafe {
+            let mut mono_reflect_sa_buffer = unsafe {
                 AudioBuffer::<&mut [f32], _>::try_new_borrowed(
                     channel_ptrs.as_mut_slice(),
                     frame_size as u32,
                 )
                 .unwrap()
             };
-            mono_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
+            mono_reflect_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
+
+            assert!(scratch_mono_pathing.len() >= frame_size);
+            let mut channel_ptrs = [scratch_mono_pathing.as_mut_ptr()];
+            // SAFETY:
+            // `channel_ptrs` points to `frame_size` floats, whose lifetime
+            // will outlast `mono_sa_buffer`.
+            let mut mono_pathing_sa_buffer = unsafe {
+                AudioBuffer::<&mut [f32], _>::try_new_borrowed(
+                    channel_ptrs.as_mut_slice(),
+                    frame_size as u32,
+                )
+                .unwrap()
+            };
+            mono_pathing_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
 
             assert!(scratch_stereo_left.len() >= frame_size);
             assert!(scratch_stereo_right.len() >= frame_size);
@@ -349,6 +381,12 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 &scratch_stereo_sa_buffer,
                 &output_sa_buffer,
             );
+            apply_volume_ramp(
+                self.params.previous_direct_gain,
+                self.params.direct_gain,
+                outputs,
+            );
+            self.params.previous_direct_gain = self.params.direct_gain;
 
             // Reflection effect
             let settings = audionimbus::AudioBufferSettings {
@@ -368,9 +406,16 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             reflection_effect_params.impulse_response_size =
                 impulse_response_size(self.quality, proc_info.sample_rate.into());
 
+            apply_volume_ramp(
+                self.params.previous_reflection_gain,
+                self.params.reflection_gain,
+                &mut [scratch_mono_reflect],
+            );
+            self.params.previous_reflection_gain = self.params.reflection_gain;
+
             let _effect_state = self.reflection_effect.apply(
                 reflection_effect_params,
-                &mono_sa_buffer,
+                &mono_reflect_sa_buffer,
                 &ambisonics_sa_buffer,
             );
 
@@ -396,9 +441,15 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
 
+                apply_volume_ramp(
+                    self.params.previous_pathing_gain,
+                    self.params.pathing_gain,
+                    &mut [scratch_mono_reflect],
+                );
+                self.params.previous_pathing_gain = self.params.pathing_gain;
                 let _effect_state = self.pathing_effect.apply(
                     pathing_effect_params,
-                    &mono_sa_buffer,
+                    &mono_pathing_sa_buffer,
                     &scratch_stereo_sa_buffer,
                 );
 
@@ -479,4 +530,16 @@ pub(crate) struct SimulationOutputEvent {
 
 fn impulse_response_size(quality: SteamAudioQuality, sampling_rate: u32) -> u32 {
     (quality.reflections.impulse_duration.as_secs_f32() * sampling_rate as f32).ceil() as u32
+}
+
+fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
+    for channel in buffer {
+        let sample_num = channel.len();
+        for (i, sample) in channel.iter_mut().enumerate() {
+            let fraction = i as f32 / sample_num as f32;
+            let volume = fraction * end_volume + (1.0 - fraction) * start_volume;
+
+            *sample *= volume;
+        }
+    }
 }

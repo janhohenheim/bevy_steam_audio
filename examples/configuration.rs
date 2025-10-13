@@ -44,7 +44,8 @@ fn setup(
         SteamAudioPool,
         // The `SteamAudioNode` tunes the parameters used when processing the audio.
         sample_effects![SteamAudioNode {
-            // TODO: move those flags down here!
+            direct_gain: 3.0,
+            reflection_gain: 0.5,
             ..default()
         }],
         Transform::from_xyz(-1.5, 0.0, -3.0),
