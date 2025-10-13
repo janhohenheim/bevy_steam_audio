@@ -196,7 +196,7 @@ impl Default for SteamAudioQuality {
     fn default() -> Self {
         Self {
             order: 2,
-            frame_size: 256,
+            frame_size: 1024,
             num_bounces: 4,
             irradiance_min_distance: 1.0,
             direct: default(),
