@@ -100,7 +100,7 @@ impl AudioNode for SteamAudioNode {
             direct_effect: audionimbus::DirectEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
-                &audionimbus::DirectEffectSettings { num_channels: 1 },
+                &audionimbus::DirectEffectSettings { num_channels: 2 },
             )
             .unwrap(),
             reflection_effect: audionimbus::ReflectionEffect::try_new(
@@ -230,7 +230,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
         // If the previous output of this node was silent, and the inputs are also silent
         // then we know there is no reverb tail left and we can skip processing.
-        if proc_info.prev_output_was_silent && proc_info.in_silence_mask.all_channels_silent(1) {
+        if proc_info.prev_output_was_silent && proc_info.in_silence_mask.all_channels_silent(2) {
             return ProcessStatus::ClearAllOutputs;
         }
 
@@ -406,7 +406,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
         // check for silence when the input is silent
         if matches!(result, ProcessStatus::OutputsModified)
-            && proc_info.in_silence_mask.all_channels_silent(1)
+            && proc_info.in_silence_mask.all_channels_silent(2)
         {
             proc_buffers.check_for_silence_on_outputs(0.0001)
         } else {
@@ -442,7 +442,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         self.direct_effect = audionimbus::DirectEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
             &settings,
-            &audionimbus::DirectEffectSettings { num_channels: 1 },
+            &audionimbus::DirectEffectSettings { num_channels: 2 },
         )
         .unwrap();
         self.reflection_effect = audionimbus::ReflectionEffect::try_new(
