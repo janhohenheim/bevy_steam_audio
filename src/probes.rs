@@ -67,8 +67,9 @@ fn generate_probes(
                 })
         })
     };
-    let scale = (aabb.max - aabb.min) / 2.0;
-    let translation = aabb.center();
+    // Transform is applied to an *axis-aligned bounding box*
+    let scale = aabb.max - aabb.min;
+    let translation = aabb.min + scale / 2.0;
     let transform = GlobalTransform::from(
         Transform::from_translation(translation.into()).with_scale(scale.into()),
     )
