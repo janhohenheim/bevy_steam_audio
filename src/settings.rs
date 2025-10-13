@@ -209,7 +209,7 @@ impl Default for SteamAudioEnabled {
         Self {
             enabled: true,
             reflection_and_pathing_simulation_timer: Some(Timer::from_seconds(
-                0.2,
+                0.1,
                 TimerMode::Once,
             )),
         }

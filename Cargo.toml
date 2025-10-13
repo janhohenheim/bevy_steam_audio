@@ -88,6 +88,7 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "wayland",
   "debug",
   "zstd_rust",
+  "dynamic_linking"
 ] }
 
 [lints.rust]

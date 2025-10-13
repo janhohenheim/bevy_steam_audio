@@ -259,7 +259,58 @@ fn update_simulation(
 
     decode_node.listener_orientation = listener_orientation;
 
+    let listener_inputs = audionimbus::SimulationInputs {
+        source: listener_orientation.to_audionimbus(),
+        direct_simulation: None,
+        reflections_simulation: None,
+        pathing_simulation: probes.as_ref().map(|probes| {
+            audionimbus::PathingSimulationParameters {
+                pathing_probes: probes,
+                visibility_radius: 1.0,
+                visibility_threshold: 0.1,
+                visibility_range: 1000.0,
+                pathing_order: quality.order,
+                enable_validation: true,
+                find_alternate_paths: true,
+                deviation: audionimbus::DeviationModel::Default,
+            }
+        }),
+    };
+    let source_inputs = |orientation: AudionimbusCoordinateSystem| audionimbus::SimulationInputs {
+        source: orientation.to_audionimbus(),
+        direct_simulation: Some(audionimbus::DirectSimulationParameters {
+            distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
+            air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
+            directivity: Some(audionimbus::Directivity::default()),
+            occlusion: Some(audionimbus::Occlusion {
+                transmission: Some(audionimbus::TransmissionParameters {
+                    // TODO: make this configurable per source
+                    num_transmission_rays: 4,
+                }),
+                algorithm: audionimbus::OcclusionAlgorithm::Raycast,
+            }),
+        }),
+        reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
+            baked_data_identifier: None,
+        }),
+        pathing_simulation: probes.as_ref().map(|probes| {
+            // todo: use global settings
+            audionimbus::PathingSimulationParameters {
+                pathing_probes: probes,
+                visibility_radius: 1.0,
+                visibility_threshold: 0.1,
+                visibility_range: 1000.0,
+                pathing_order: quality.order,
+                enable_validation: true,
+                find_alternate_paths: true,
+                deviation: audionimbus::DeviationModel::Default,
+            }
+        }),
+    };
+
     // set inputs
+
+    listener_source.set_inputs(audionimbus::SimulationFlags::DIRECT, listener_inputs);
     for (mut source, source_settings, transform, effects) in nodes.iter_mut() {
         if !source_settings
             .flags
@@ -272,22 +323,7 @@ fn update_simulation(
 
         source.set_inputs(
             audionimbus::SimulationFlags::DIRECT,
-            audionimbus::SimulationInputs {
-                source: orientation.to_audionimbus(),
-                direct_simulation: Some(audionimbus::DirectSimulationParameters {
-                    distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
-                    air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-                    directivity: Some(audionimbus::Directivity::default()),
-                    occlusion: Some(audionimbus::Occlusion {
-                        transmission: Some(audionimbus::TransmissionParameters {
-                            num_transmission_rays: 8,
-                        }),
-                        algorithm: audionimbus::OcclusionAlgorithm::Raycast,
-                    }),
-                }),
-                reflections_simulation: None,
-                pathing_simulation: None,
-            },
+            source_inputs(orientation),
         );
 
         let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
@@ -367,16 +403,7 @@ fn update_simulation(
 
     listener_source.set_inputs(
         audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-        audionimbus::SimulationInputs {
-            source: listener_orientation.to_audionimbus(),
-            direct_simulation: None,
-            reflections_simulation: Some(
-                audionimbus::ReflectionsSimulationParameters::Convolution {
-                    baked_data_identifier: None,
-                },
-            ),
-            pathing_simulation: None,
-        },
+        listener_inputs,
     );
     for (mut source, source_settings, transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
@@ -387,30 +414,7 @@ fn update_simulation(
         let transform = transform.compute_transform();
         let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
 
-        source.set_inputs(
-            flags,
-            audionimbus::SimulationInputs {
-                source: orientation.to_audionimbus(),
-                direct_simulation: None,
-                reflections_simulation: Some(
-                    audionimbus::ReflectionsSimulationParameters::Convolution {
-                        baked_data_identifier: None,
-                    },
-                ),
-                pathing_simulation: probes.as_ref().map(|probes| {
-                    audionimbus::PathingSimulationParameters {
-                        pathing_probes: probes,
-                        visibility_radius: 1.0,
-                        visibility_threshold: 0.1,
-                        visibility_range: 1000.0,
-                        pathing_order: quality.order,
-                        enable_validation: true,
-                        find_alternate_paths: true,
-                        deviation: audionimbus::DeviationModel::Default,
-                    }
-                }),
-            },
-        );
+        source.set_inputs(flags, source_inputs(orientation));
         let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
         node.pathing_available = probes.is_some();
     }
