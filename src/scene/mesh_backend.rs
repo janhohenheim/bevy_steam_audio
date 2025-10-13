@@ -126,8 +126,6 @@ fn spawn_new_steam_audio_meshes(
         return Ok(());
     }
 
-    // We don't actually need the simulator, but calling `root.commit()` is not allowed while a simulation is running.
-
     to_add.retain(|entity| {
         let name = names.get(*entity).unwrap();
         let Ok((mesh_handle, material, transform)) = mesh_handles.get(*entity) else {
@@ -185,7 +183,6 @@ fn spawn_new_steam_audio_meshes(
                         return false;
                     }
                 };
-            info!("Instanced mesh created");
             root.add_instanced_mesh(instanced_mesh.clone());
             commands
                 .entity(*entity)
