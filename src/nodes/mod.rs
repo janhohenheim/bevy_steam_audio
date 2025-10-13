@@ -201,9 +201,7 @@ impl FixedProcessBlock {
     }
 
     pub fn max_block_frames(&self) -> usize {
-        self.outputs.first()
-            .map(Vec::capacity)
-            .unwrap_or_default()
+        self.outputs.first().map(Vec::capacity).unwrap_or_default()
     }
 
     pub fn inputs_clear(&self) -> bool {

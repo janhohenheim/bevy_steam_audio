@@ -99,15 +99,6 @@ impl AudioNode for SteamAudioNode {
             sampling_rate: cx.stream_info.sample_rate.get(),
             frame_size: config.frame_size,
         };
-        let hrtf = audionimbus::Hrtf::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &settings,
-            &audionimbus::HrtfSettings {
-                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
-                ..default()
-            },
-        )
-        .unwrap();
         SteamAudioProcessor {
             params: self.clone(),
             ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
@@ -167,7 +158,6 @@ impl AudioNode for SteamAudioNode {
                 (config.frame_size * config.num_channels()) as usize,
             )
             .collect(),
-            hrtf,
         }
     }
 }
@@ -189,7 +179,6 @@ struct SteamAudioProcessor {
     // buffers.
     ambisonics_buffer: Box<[f32]>,
     ambisonics_ptrs: ChannelPtrs,
-    hrtf: audionimbus::Hrtf,
 }
 
 impl SteamAudioProcessor {
@@ -230,7 +219,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                     let mut pathing = update.outputs.pathing().into_inner();
                     pathing.order = self.order;
                     pathing.listener = self.params.listener_position.to_audionimbus();
-                    pathing.hrtf = self.hrtf.clone();
                     self.pathing_effect_params = Some(pathing);
                 }
             }
@@ -387,15 +375,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             sampling_rate: stream_info.sample_rate.get(),
             frame_size: self.fixed_block.frame_size() as u32,
         };
-        let hrtf = audionimbus::Hrtf::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &settings,
-            &audionimbus::HrtfSettings {
-                volume_normalization: audionimbus::VolumeNormalization::RootMeanSquared,
-                ..default()
-            },
-        )
-        .unwrap();
 
         self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
@@ -434,10 +413,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &settings,
             &audionimbus::PathEffectSettings {
                 max_order: self.order,
-                spatialization: Some(audionimbus::Spatialization {
-                    speaker_layout: audionimbus::SpeakerLayout::Stereo,
-                    hrtf: &hrtf,
-                }),
+                spatialization: None,
             },
         )
         .unwrap();
@@ -445,7 +421,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         let fixed_block_size = self.fixed_block.inputs.channel_capacity;
         let max_output_size = stream_info.max_block_frames.get() as usize;
         self.fixed_block.resize(fixed_block_size, max_output_size);
-        self.hrtf = hrtf;
     }
 }
 
