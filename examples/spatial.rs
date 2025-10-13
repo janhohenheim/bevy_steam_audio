@@ -58,11 +58,11 @@ fn setup(
         Mesh3d(meshes.add(Cylinder::new(0.2, 0.001))),
         MeshMaterial3d(materials.add(StandardMaterial {
             unlit: true,
-            ..StandardMaterial::from(Color::from(tailwind::EMERALD_500))
+            ..StandardMaterial::from(Color::from(tailwind::GREEN_400))
         })),
         PointLight {
             shadows_enabled: true,
-            color: Color::from(tailwind::EMERALD_500),
+            color: Color::from(tailwind::GREEN_400),
             ..default()
         },
     ));

@@ -20,9 +20,6 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
 pub struct SteamAudioPool;
 
-#[derive(NodeLabel, PartialEq, Eq, Debug, Hash, Clone)]
-pub struct SteamAudioDecodeBus;
-
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     commands.spawn(ReverbDataNode);
 

@@ -37,7 +37,7 @@ fn setup(
         SteamAudioPool,
         Transform::from_xyz(-1.5, 0.0, -3.0),
         Mesh3d(meshes.add(Sphere::new(0.2))),
-        MeshMaterial3d(materials.add(Color::WHITE)),
+        MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
     ));
 
     // Some occluding geometry using MeshSteamAudioMaterial
