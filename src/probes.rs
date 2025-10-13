@@ -1,5 +1,5 @@
 use bevy_camera::primitives::Aabb;
-use bevy_math::bounding::{Aabb3d, BoundingVolume};
+use bevy_math::bounding::Aabb3d;
 
 use crate::{
     prelude::*, scene::SteamAudioRootScene, simulation::AudionimbusSimulator,
