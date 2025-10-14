@@ -1,4 +1,4 @@
-use crate::{prelude::*, settings::SteamAudioQuality};
+use crate::prelude::*;
 use bevy_seedling::prelude::*;
 use core::iter;
 use firewheel::node::{ProcBuffers, ProcInfo, ProcessStatus};
@@ -8,6 +8,7 @@ pub(crate) mod encoder;
 pub(crate) mod reverb;
 
 pub use encoder::*;
+pub use reverb::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_nodes);
@@ -20,6 +21,9 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
 pub struct SteamAudioPool;
 
+#[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
+pub struct SteamAudioReverbPool;
+
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     // Copy-paste this part if you want to set up your own pool!
     commands.spawn((
@@ -28,6 +32,14 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
             channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
         },
         sample_effects![SteamAudioNode::default()],
+    ));
+
+    commands.spawn((
+        SamplerPool(SteamAudioReverbPool),
+        sample_effects![
+            SendNode::new(Volume::default(), MainBus),
+            SteamAudioReverbNode::default()
+        ],
     ));
 }
 

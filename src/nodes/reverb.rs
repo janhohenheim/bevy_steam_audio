@@ -1,6 +1,6 @@
 use audionimbus::AudioBuffer;
 use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
-use bevy_seedling::node::RegisterNode as _;
+use bevy_seedling::{node::RegisterNode as _, prelude::*};
 use firewheel::{
     channel_config::ChannelConfig,
     diff::{Diff, Patch, RealtimeClone},
@@ -21,7 +21,7 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioReverbNode>();
 }
 
-#[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
+#[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SteamAudioReverbNode {
     pub listener_position: AudionimbusCoordinateSystem,
@@ -45,7 +45,12 @@ impl AudioNode for SteamAudioReverbNode {
     type Configuration = SteamAudioReverbNodeConfig;
 
     fn info(&self, _: &Self::Configuration) -> AudioNodeInfo {
-        AudioNodeInfo::new().channel_config(ChannelConfig::new(0, 0))
+        AudioNodeInfo::new()
+            .debug_name("Steam Audio reverb node")
+            .channel_config(ChannelConfig {
+                num_inputs: ChannelCount::STEREO,
+                num_outputs: ChannelCount::STEREO,
+            })
     }
 
     fn construct_processor(
@@ -227,7 +232,7 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
                 &decode_params,
-                &mono_sa_buffer,
+                &ambisonics_sa_buffer,
                 &output_sa_buffer,
             );
         });

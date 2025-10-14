@@ -8,7 +8,10 @@ use std::{
 
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
-    nodes::{SimulationOutputEvent, SteamAudioNodeConfig, encoder::SteamAudioNode},
+    nodes::{
+        SimulationOutputEvent, SteamAudioNodeConfig, SteamAudioReverbNodeConfig,
+        encoder::SteamAudioNode, reverb::SteamAudioReverbNode,
+    },
     prelude::*,
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
@@ -117,6 +120,7 @@ fn create_simulator(
     sources: Query<&AudionimbusSource>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
     mut nodes: Query<&mut SteamAudioNodeConfig>,
+    mut reverb_nodes: Query<&mut SteamAudioReverbNodeConfig>,
 ) -> Result {
     let settings = audionimbus::AudioSettings {
         sampling_rate: create.sampling_rate.into(),
@@ -133,6 +137,12 @@ fn create_simulator(
     .unwrap();
     for mut node_config in nodes.iter_mut() {
         *node_config = SteamAudioNodeConfig {
+            quality: *quality,
+            hrtf: Some(hrtf.clone()),
+        }
+    }
+    for mut reverb_node_config in reverb_nodes.iter_mut() {
+        *reverb_node_config = SteamAudioReverbNodeConfig {
             quality: *quality,
             hrtf: Some(hrtf.clone()),
         }
@@ -219,7 +229,9 @@ fn update_simulation(
         &GlobalTransform,
         &SampleEffects,
     )>,
+    sample_effects: Query<&SampleEffects>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
+    mut reverb_node: Query<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
@@ -239,8 +251,6 @@ fn update_simulation(
             .map_err(|e| format!("Failed to commit simulator even though it should be idle: {e}"))?
             .commit();
     }
-
-    //decode_node.listener_orientation = listener_orientation;
 
     let listener_inputs = audionimbus::SimulationInputs {
         source: listener_orientation.to_audionimbus(),
@@ -315,6 +325,11 @@ fn update_simulation(
         node.source_position = transform.translation;
         node.listener_position = listener_orientation;
     }
+    for effects in sample_effects.iter() {
+        if let Ok((mut node, _events)) = reverb_node.get_effect_mut(effects) {
+            node.listener_position = listener_orientation;
+        }
+    }
 
     let simulator = simulator
         .try_read()
@@ -358,11 +373,6 @@ fn update_simulation(
     // The previous simulation is complete, so we can start the next one
 
     // Read the newest outputs
-    let _reverb_simulation_outputs =
-        listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
-
-    // TODO: use this for reverb! Send an audio event.
-
     for (mut source, source_settings, _transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
         flags.remove(audionimbus::SimulationFlags::DIRECT);
@@ -376,6 +386,16 @@ fn update_simulation(
             flags,
             outputs: simulation_outputs,
         }));
+    }
+
+    for effects in sample_effects.iter() {
+        if let Ok((_node, mut events)) = reverb_node.get_effect_mut(effects) {
+            let params: audionimbus::ReflectionEffectParams = listener_source
+                .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
+                .reflections()
+                .into_inner();
+            events.push(NodeEventType::custom(params));
+        }
     }
 
     // set new inputs
