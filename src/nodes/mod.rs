@@ -4,15 +4,17 @@ use core::iter;
 use firewheel::node::{ProcBuffers, ProcInfo, ProcessStatus};
 use prealloc_ref_vec::{PreallocRefVec, TmpRefVec};
 
+pub(crate) mod decoder;
 pub(crate) mod encoder;
 pub(crate) mod reverb;
 
+pub use decoder::*;
 pub use encoder::*;
 pub use reverb::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_nodes);
-    app.add_plugins((encoder::plugin, reverb::plugin));
+    app.add_plugins((encoder::plugin, reverb::plugin, decoder::plugin));
     app.register_required_components::<SteamAudioPool, Transform>()
         .register_required_components::<SteamAudioPool, GlobalTransform>()
         .register_required_components::<SteamAudioPool, SteamAudioSamplePlayer>();
