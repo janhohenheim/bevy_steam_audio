@@ -230,7 +230,7 @@ fn update_simulation(
         &SampleEffects,
     )>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut reverb_node: Single<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
+    reverb_node: Single<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
 
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,

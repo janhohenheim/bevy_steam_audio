@@ -89,7 +89,7 @@ fn benchmarks(c: &mut Criterion) {
                     sleep(frame_time - elapsed);
                 }
                 last = Instant::now();
-            })
+            });
         });
     };
     bench(1);
