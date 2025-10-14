@@ -34,8 +34,7 @@ pub mod prelude {
 
     pub use crate::{
         SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, SteamAudioSamplePlayer,
-        nodes::{SteamAudioNode, SteamAudioReverbNode},
-        nodes::{SteamAudioPool, SteamAudioReverbPool},
+        nodes::{SteamAudioNode, SteamAudioPool, SteamAudioReverbNode, SteamAudioReverbPool},
         probes::GenerateProbes,
         settings::{
             SteamAudioDirectQuality, SteamAudioPathingQuality, SteamAudioQuality,

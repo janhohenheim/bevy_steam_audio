@@ -24,6 +24,9 @@ pub struct SteamAudioPool;
 #[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
 pub struct SteamAudioReverbPool;
 
+#[derive(NodeLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
+pub struct SteamAudioReverbBus;
+
 pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality>) {
     // Copy-paste this part if you want to set up your own pool!
     commands.spawn((
@@ -34,12 +37,11 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
         sample_effects![SteamAudioNode::default()],
     ));
 
+    commands.spawn((SteamAudioReverbNode::default(), SteamAudioReverbBus));
+
     commands.spawn((
         SamplerPool(SteamAudioReverbPool),
-        sample_effects![
-            SendNode::new(Volume::default(), MainBus),
-            SteamAudioReverbNode::default()
-        ],
+        sample_effects![SendNode::new(Volume::default(), SteamAudioReverbBus)],
     ));
 }
 

@@ -39,16 +39,20 @@ fn setup(
         SteamAudioReverbPool,
     ));
 
-    // To show the reverb, let's put the listener in a room
+    // To show the reverb, let's put the listener in a room that is open to the right.
+    // The effect will be that certain frequencies will be reflected from the left wall and thus some parts of the
+    // audio will sounds different on the left speaker.
     for transform in [
         // floor
-        Transform::from_xyz(0.0, -0.5, 0.0),
+        Transform::from_xyz(-0.5, -0.5, 0.0),
+        // top
+        Transform::from_xyz(-0.5, 0.5, 0.0),
         // left wall
         Transform::from_xyz(-0.8, 0.0, 0.0).with_rotation(Quat::from_rotation_z(TAU / 4.0)),
-        // right wall
-        Transform::from_xyz(0.8, 0.0, 0.0).with_rotation(Quat::from_rotation_z(TAU / 4.0)),
         // front wall
-        Transform::from_xyz(0.0, 0.0, -1.5).with_rotation(Quat::from_rotation_x(TAU / 4.0)),
+        Transform::from_xyz(-0.5, 0.0, -1.2).with_rotation(Quat::from_rotation_x(TAU / 4.0)),
+        // back wall
+        Transform::from_xyz(-0.5, 0.0, 1.2).with_rotation(Quat::from_rotation_x(TAU / 4.0)),
     ] {
         commands.spawn((
             Mesh3d(meshes.add(Cuboid::new(2.0, 0.4, 2.0))),
