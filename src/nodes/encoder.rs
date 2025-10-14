@@ -2,7 +2,7 @@ use crate::{
     STEAM_AUDIO_CONTEXT,
     nodes::FixedProcessBlock,
     prelude::*,
-    settings::{SteamAudioQuality, order_to_num_channels},
+    settings::SteamAudioQuality,
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
@@ -72,13 +72,6 @@ fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
     config.quality = quality;
 }
 
-impl SteamAudioNodeConfig {
-    #[inline]
-    fn num_channels(&self) -> u32 {
-        order_to_num_channels(self.quality.order)
-    }
-}
-
 impl AudioNode for SteamAudioNode {
     type Configuration = SteamAudioNodeConfig;
 
@@ -121,11 +114,10 @@ impl AudioNode for SteamAudioNode {
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::ReflectionEffectSettings::Convolution {
-                    impulse_response_size: impulse_response_size(
-                        config.quality,
-                        settings.sampling_rate,
-                    ),
-                    num_channels: config.num_channels(),
+                    impulse_response_size: config
+                        .quality
+                        .impulse_response_size(settings.sampling_rate),
+                    num_channels: config.quality.num_channels(),
                 },
             )
             .unwrap(),
@@ -168,10 +160,10 @@ impl AudioNode for SteamAudioNode {
             pathing_effect_params: None,
             quality: config.quality,
             hrtf,
-            ambisonics_ptrs: ChannelPtrs::new(config.num_channels() as usize),
+            ambisonics_ptrs: ChannelPtrs::new(config.quality.num_channels() as usize),
             ambisonics_buffer: core::iter::repeat_n(
                 0f32,
-                (config.quality.frame_size * config.num_channels()) as usize,
+                (config.quality.frame_size * config.quality.num_channels()) as usize,
             )
             .collect(),
         }
@@ -197,13 +189,6 @@ struct SteamAudioProcessor {
     ambisonics_buffer: Box<[f32]>,
     ambisonics_ptrs: ChannelPtrs,
     hrtf: audionimbus::Hrtf,
-}
-
-impl SteamAudioProcessor {
-    #[inline]
-    fn num_channels(&self) -> u32 {
-        order_to_num_channels(self.quality.order)
-    }
 }
 
 impl AudioNodeProcessor for SteamAudioProcessor {
@@ -400,8 +385,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             reflection_effect_params.reflection_effect_type =
                 audionimbus::ReflectionEffectType::Convolution;
             reflection_effect_params.num_channels = self.quality.num_channels();
-            reflection_effect_params.impulse_response_size =
-                impulse_response_size(self.quality, proc_info.sample_rate.into());
+            reflection_effect_params.impulse_response_size = self
+                .quality
+                .impulse_response_size(proc_info.sample_rate.into());
 
             apply_volume_ramp(
                 self.params.previous_reflection_gain,
@@ -502,8 +488,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &STEAM_AUDIO_CONTEXT,
             &settings,
             &audionimbus::ReflectionEffectSettings::Convolution {
-                impulse_response_size: impulse_response_size(self.quality, settings.sampling_rate),
-                num_channels: self.num_channels(),
+                impulse_response_size: self.quality.impulse_response_size(settings.sampling_rate),
+                num_channels: self.quality.num_channels(),
             },
         )
         .unwrap();
@@ -546,10 +532,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 pub(crate) struct SimulationOutputEvent {
     pub(crate) flags: audionimbus::SimulationFlags,
     pub(crate) outputs: audionimbus::SimulationOutputs,
-}
-
-fn impulse_response_size(quality: SteamAudioQuality, sampling_rate: u32) -> u32 {
-    (quality.reflections.impulse_duration.as_secs_f32() * sampling_rate as f32).ceil() as u32
 }
 
 fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {

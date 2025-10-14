@@ -8,10 +8,7 @@ use std::{
 
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
-    nodes::{
-        SimulationOutputEvent, SteamAudioNodeConfig, encoder::SteamAudioNode,
-        reverb::ReverbDataNode,
-    },
+    nodes::{SimulationOutputEvent, SteamAudioNodeConfig, encoder::SteamAudioNode},
     prelude::*,
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
@@ -223,9 +220,6 @@ fn update_simulation(
         &SampleEffects,
     )>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut reverb_data: Option<
-        Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
-    >,
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
@@ -364,13 +358,10 @@ fn update_simulation(
     // The previous simulation is complete, so we can start the next one
 
     // Read the newest outputs
-    let reverb_simulation_outputs =
+    let _reverb_simulation_outputs =
         listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
-    if let Some(reverb_data) = reverb_data.as_mut() {
-        reverb_data.push(NodeEventType::custom(
-            reverb_simulation_outputs.reflections().into_inner(),
-        ));
-    }
+
+    // TODO: use this for reverb! Send an audio event.
 
     for (mut source, source_settings, _transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
