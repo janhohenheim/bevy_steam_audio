@@ -1,10 +1,3 @@
-# Bevy Steam Audio
-
-WIP of an integration between Bevy and Steam Audio via audionimbus. See <https://github.com/MaxenceMaire/audionimbus-demo> for a minimal POC of the approach used in the crate.
-
-## Usage
-
-```rust
 use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
@@ -17,17 +10,32 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             SeedlingPlugin::default(),
-            // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
-            // Steam Audio still needs some scene backend to know how to build its 3D scene.
-            // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
-            // `Mesh3d` and `MeshMaterial3d`.
             Mesh3dSteamAudioScenePlugin::default(),
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (spawn_custom_pool, setup))
+        // Make sure to require `SteamAudioSamplePlayer` or you won't be able to hear anything
+        .register_required_components::<MyOwnSteamAudioPool, SteamAudioSamplePlayer>()
         .run();
 }
 
+#[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
+pub struct MyOwnSteamAudioPool;
+
+// This is a recreation of the `SteamAudioPool`.
+// By creating a custom pool, you can add any custom audio processing nodes you want into the mix.
+fn spawn_custom_pool(mut commands: Commands, quality: Res<SteamAudioQuality>) {
+    // Copy-paste this part if you want to set up your own pool!
+    commands.spawn((
+        SamplerPool(MyOwnSteamAudioPool),
+        VolumeNodeConfig {
+            channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
+        },
+        sample_effects![SteamAudioNode::default()],
+    ));
+}
+
+// This is the exact same setup as in minimal.rs, but with `MyOwnSteamAudioPool` instead of `SteamAudioPool`.
 fn setup(
     mut commands: Commands,
     assets: Res<AssetServer>,
@@ -41,7 +49,7 @@ fn setup(
     // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
-        SteamAudioPool,
+        MyOwnSteamAudioPool,
         Transform::from_xyz(-1.5, 0.0, -3.0),
         Mesh3d(meshes.add(Sphere::new(0.2))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
@@ -61,10 +69,3 @@ fn setup(
         Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
     ));
 }
-```
-
-## Compatibility
-
-| Bevy | bevy_steam_audio | Steam Audio |
-|------|------------------|-------------|
-| 0.17 | 0.1              | 4.7         |

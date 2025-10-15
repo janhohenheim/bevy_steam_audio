@@ -9,17 +9,17 @@ use crate::{
     wrapper::{ToSteamAudioMesh as _, ToSteamAudioTransform},
 };
 
-pub struct Mesh3dBackendPlugin {
+pub struct Mesh3dSteamAudioScenePlugin {
     _pd: PhantomData<()>,
 }
 
-impl Default for Mesh3dBackendPlugin {
+impl Default for Mesh3dSteamAudioScenePlugin {
     fn default() -> Self {
         Self { _pd: PhantomData }
     }
 }
 
-impl Plugin for Mesh3dBackendPlugin {
+impl Plugin for Mesh3dSteamAudioScenePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,

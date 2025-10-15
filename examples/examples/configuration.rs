@@ -2,7 +2,7 @@ use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
 };
 
 fn main() {
@@ -11,31 +11,23 @@ fn main() {
             DefaultPlugins,
             SeedlingPlugin::default(),
             SteamAudioPlugin::default(),
-            Mesh3dBackendPlugin::default(),
+            Mesh3dSteamAudioScenePlugin::default(),
         ))
-        .add_systems(Startup, (spawn_custom_pool, setup))
-        // Make sure to require `SteamAudioSamplePlayer` or you won't be able to hear anything
-        .register_required_components::<MyOwnSteamAudioPool, SteamAudioSamplePlayer>()
+        // SteamAudioQuality can be used to set global quality settings.
+        // This resource can also be changed at runtime, e.g. in a settings menu.
+        .insert_resource(SteamAudioQuality {
+            order: 3,
+            frame_size: 1024,
+            num_bounces: 32,
+            direct: SteamAudioDirectQuality {
+                max_num_occlusion_samples: 30,
+            },
+            ..default()
+        })
+        .add_systems(Startup, setup)
         .run();
 }
 
-#[derive(PoolLabel, PartialEq, Eq, Debug, Hash, Clone, Default)]
-pub struct MyOwnSteamAudioPool;
-
-// This is a recreation of the `SteamAudioPool`.
-// By creating a custom pool, you can add any custom audio processing nodes you want into the mix.
-fn spawn_custom_pool(mut commands: Commands, quality: Res<SteamAudioQuality>) {
-    // Copy-paste this part if you want to set up your own pool!
-    commands.spawn((
-        SamplerPool(MyOwnSteamAudioPool),
-        VolumeNodeConfig {
-            channels: NonZeroChannelCount::new(quality.num_channels()).unwrap(),
-        },
-        sample_effects![SteamAudioNode::default()],
-    ));
-}
-
-// This is the exact same setup as in minimal.rs, but with `MyOwnSteamAudioPool` instead of `SteamAudioPool`.
 fn setup(
     mut commands: Commands,
     assets: Res<AssetServer>,
@@ -49,7 +41,13 @@ fn setup(
     // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
-        MyOwnSteamAudioPool,
+        SteamAudioPool,
+        // The `SteamAudioNode` tunes the parameters used when processing the audio.
+        sample_effects![SteamAudioNode {
+            direct_gain: 3.0,
+            reflection_gain: 0.5,
+            ..default()
+        }],
         Transform::from_xyz(-1.5, 0.0, -3.0),
         Mesh3d(meshes.add(Sphere::new(0.2))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),

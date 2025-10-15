@@ -341,6 +341,63 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "avian3d"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56ce9b78f7af428b9c74f95f5e1bca4ffeae0e0e70e7a3b256bd606b77d6031e"
+dependencies = [
+ "approx",
+ "avian_derive",
+ "bevy",
+ "bevy_heavy",
+ "bevy_math",
+ "bevy_transform_interpolation",
+ "bitflags 2.9.4",
+ "derive_more",
+ "disqualified",
+ "glam_matrix_extras",
+ "itertools 0.13.0",
+ "slab",
+ "smallvec",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "avian_derive"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12b257f601a1535e0d4a7a7796f535e3a13de62fd422b16dff7c14d27f0d4048"
+dependencies = [
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "avian_steam_audio"
+version = "0.1.0"
+dependencies = [
+ "avian3d",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_math",
+ "bevy_mesh",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_seedling",
+ "bevy_steam_audio",
+ "bevy_tasks",
+ "bevy_time",
+ "bevy_transform",
+ "bevy_utils",
+]
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -767,6 +824,17 @@ dependencies = [
  "smallvec",
  "thiserror 2.0.17",
  "tracing",
+]
+
+[[package]]
+name = "bevy_heavy"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c0651daa331c326e1460cb19ee5bf497ed2810982dafca8784db44725f5c4b"
+dependencies = [
+ "bevy_math",
+ "bevy_reflect",
+ "glam_matrix_extras",
 ]
 
 [[package]]
@@ -1366,7 +1434,6 @@ version = "0.1.0"
 dependencies = [
  "audionimbus",
  "audionimbus-sys",
- "bevy",
  "bevy_app",
  "bevy_asset",
  "bevy_camera",
@@ -1465,6 +1532,15 @@ dependencies = [
  "derive_more",
  "serde",
  "thiserror 2.0.17",
+]
+
+[[package]]
+name = "bevy_transform_interpolation"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284738382605476667bbe80cf0959f4dffb61adbdb0149e22e67f4dbf97a5bc2"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -2735,10 +2811,21 @@ version = "0.30.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e12d847aeb25f41be4c0ec9587d624e9cd631bc007a8fd7ce3f5851e064c6460"
 dependencies = [
+ "approx",
  "bytemuck",
  "libm",
  "rand",
  "serde_core",
+]
+
+[[package]]
+name = "glam_matrix_extras"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a321595865557fc1ec990c8eb289b25f0cb1d058997cc0034a17f507704f3183"
+dependencies = [
+ "bevy_reflect",
+ "glam 0.30.8",
 ]
 
 [[package]]
@@ -4016,6 +4103,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4566,6 +4675,17 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "steam_audio_examples"
+version = "0.1.0"
+dependencies = [
+ "avian3d",
+ "avian_steam_audio",
+ "bevy",
+ "bevy_seedling",
+ "bevy_steam_audio",
+]
 
 [[package]]
 name = "strength_reduce"
