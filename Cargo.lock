@@ -405,6 +405,7 @@ dependencies = [
  "bevy_time",
  "bevy_transform",
  "bevy_utils",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

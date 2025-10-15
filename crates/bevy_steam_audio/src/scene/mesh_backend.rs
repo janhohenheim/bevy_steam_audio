@@ -156,13 +156,14 @@ fn spawn_new_steam_audio_meshes(
                         return false;
                     }
                 };
-                let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, material.material) {
-                    Ok(mesh) => mesh,
-                    Err(err) => {
-                        errors.push(format!("{name}: Failed to convert mesh: {err}"));
-                        return false;
-                    }
-                };
+                let static_mesh =
+                    match mesh.to_steam_audio_mesh(&sub_scene, material.material.into()) {
+                        Ok(mesh) => mesh,
+                        Err(err) => {
+                            errors.push(format!("{name}: Failed to convert mesh: {err}"));
+                            return false;
+                        }
+                    };
                 sub_scene.add_static_mesh(static_mesh);
                 // committing a new scene should be fine during simulation of a different scene
                 sub_scene.commit();
@@ -189,7 +190,7 @@ fn spawn_new_steam_audio_meshes(
                 .try_insert(InstancedMesh(instanced_mesh));
         } else {
             let mesh = mesh.clone().transformed_by(transform.compute_transform());
-            let static_mesh = match mesh.to_steam_audio_mesh(&root, material.material) {
+            let static_mesh = match mesh.to_steam_audio_mesh(&root, material.material.into()) {
                 Ok(mesh) => mesh,
                 Err(err) => {
                     errors.push(format!("{name}: Failed to convert mesh: {err}"));

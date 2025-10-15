@@ -11,7 +11,6 @@ pub mod simulation;
 pub mod sources;
 mod wrapper;
 pub use audionimbus;
-pub use audionimbus::Material as SteamAudioMaterial;
 
 pub mod settings;
 
@@ -32,7 +31,7 @@ pub mod prelude {
     pub(crate) use bevy_utils::prelude::*;
 
     pub use crate::{
-        SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, SteamAudioSamplePlayer,
+        SteamAudioListener, SteamAudioPlugin, SteamAudioSamplePlayer,
         nodes::{
             AmbisonicDecodeNode, SteamAudioNode, SteamAudioPool, SteamAudioReverbNode,
             SteamAudioReverbPool,
@@ -42,6 +41,7 @@ pub mod prelude {
             SteamAudioDirectQuality, SteamAudioPathingQuality, SteamAudioQuality,
             SteamAudioReflectionsQuality,
         },
+        wrapper::SteamAudioMaterial,
     };
 }
 
