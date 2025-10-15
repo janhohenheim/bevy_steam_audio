@@ -9,8 +9,8 @@ use std::{
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        SimulationOutputEvent, SteamAudioNodeConfig, encoder::SteamAudioNode,
-        reverb::ReverbDataNode,
+        SimulationOutputEvent, SteamAudioNodeConfig, SteamAudioReverbNodeConfig,
+        encoder::SteamAudioNode, reverb::SteamAudioReverbNode,
     },
     prelude::*,
     probes::SteamAudioProbeBatch,
@@ -120,6 +120,7 @@ fn create_simulator(
     sources: Query<&AudionimbusSource>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
     mut nodes: Query<&mut SteamAudioNodeConfig>,
+    mut reverb_nodes: Query<&mut SteamAudioReverbNodeConfig>,
 ) -> Result {
     let settings = audionimbus::AudioSettings {
         sampling_rate: create.sampling_rate.into(),
@@ -136,6 +137,12 @@ fn create_simulator(
     .unwrap();
     for mut node_config in nodes.iter_mut() {
         *node_config = SteamAudioNodeConfig {
+            quality: *quality,
+            hrtf: Some(hrtf.clone()),
+        }
+    }
+    for mut reverb_node_config in reverb_nodes.iter_mut() {
+        *reverb_node_config = SteamAudioReverbNodeConfig {
             quality: *quality,
             hrtf: Some(hrtf.clone()),
         }
@@ -223,9 +230,8 @@ fn update_simulation(
         &SampleEffects,
     )>,
     mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    mut reverb_data: Option<
-        Single<&mut AudioEvents, (With<ReverbDataNode>, Without<SteamAudioNode>)>,
-    >,
+    reverb_node: Single<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
+
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
@@ -245,8 +251,6 @@ fn update_simulation(
             .map_err(|e| format!("Failed to commit simulator even though it should be idle: {e}"))?
             .commit();
     }
-
-    //decode_node.listener_orientation = listener_orientation;
 
     let listener_inputs = audionimbus::SimulationInputs {
         source: listener_orientation.to_audionimbus(),
@@ -298,9 +302,8 @@ fn update_simulation(
         }),
     };
 
+    let (mut reverb_node, mut reverb_events) = reverb_node.into_inner();
     // set inputs
-
-    listener_source.set_inputs(audionimbus::SimulationFlags::DIRECT, listener_inputs);
     for (mut source, source_settings, transform, effects) in nodes.iter_mut() {
         if !source_settings
             .flags
@@ -321,6 +324,9 @@ fn update_simulation(
         node.source_position = transform.translation;
         node.listener_position = listener_orientation;
     }
+
+    listener_source.set_inputs(audionimbus::SimulationFlags::DIRECT, listener_inputs);
+    reverb_node.listener_position = listener_orientation;
 
     let simulator = simulator
         .try_read()
@@ -364,14 +370,6 @@ fn update_simulation(
     // The previous simulation is complete, so we can start the next one
 
     // Read the newest outputs
-    let reverb_simulation_outputs =
-        listener_source.get_outputs(audionimbus::SimulationFlags::REFLECTIONS);
-    if let Some(reverb_data) = reverb_data.as_mut() {
-        reverb_data.push(NodeEventType::custom(
-            reverb_simulation_outputs.reflections().into_inner(),
-        ));
-    }
-
     for (mut source, source_settings, _transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
         flags.remove(audionimbus::SimulationFlags::DIRECT);
@@ -387,6 +385,12 @@ fn update_simulation(
         }));
     }
 
+    let params: audionimbus::ReflectionEffectParams = listener_source
+        .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
+        .reflections()
+        .into_inner();
+    reverb_events.push(NodeEventType::custom(params));
+
     // set new inputs
     simulator.set_shared_inputs(
         audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
@@ -397,6 +401,7 @@ fn update_simulation(
         audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
         listener_inputs,
     );
+
     for (mut source, source_settings, transform, effects) in nodes.iter_mut() {
         let mut flags = source_settings.flags;
         flags.remove(audionimbus::SimulationFlags::DIRECT);

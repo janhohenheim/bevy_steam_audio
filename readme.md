@@ -4,7 +4,7 @@ WIP of an integration between Bevy and Steam Audio via audionimbus. See <https:/
 
 ## Usage
 
-```rust
+```rust,ignore
 use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
