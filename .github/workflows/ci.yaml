@@ -124,28 +124,6 @@ jobs:
       - name: Run tests
         run: cargo test --locked --workspace --lib --bins --tests --examples --profile ci --no-fail-fast --all-features
 
-  cargo-publish:
-    name: Dry run cargo publish
-    runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: -Zshare-generics=y -Zthreads=0
-      RUSTDOCFLAGS: -Zshare-generics=y -Zthreads=0
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "true"
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-      - name: Populate target directory from cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install deps
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
-      - name: Run cargo publish dry run
-        run: cargo publish --dry-run --all-features --locked --workspace
-
   bevy-lints:
     name: Bevy lints
     runs-on: ubuntu-latest
