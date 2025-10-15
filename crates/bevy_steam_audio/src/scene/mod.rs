@@ -1,6 +1,6 @@
 use bevy_ecs::entity_disabling::Disabled;
 
-use crate::{STEAM_AUDIO_CONTEXT, prelude::*};
+use crate::{STEAM_AUDIO_CONTEXT, prelude::*, wrapper::ToSteamAudioTransform as _};
 
 pub mod mesh_backend;
 
@@ -11,6 +11,10 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(remove_material)
         .add_observer(remove_dynamic_mesh_from_scene)
         .add_observer(remove_static_mesh_from_scene);
+    app.add_systems(
+        PostUpdate,
+        update_transforms.in_set(SteamAudioSystems::UpdateTransforms),
+    );
 }
 
 #[derive(Resource, Deref, DerefMut)]
@@ -48,13 +52,15 @@ fn remove_material(remove: On<Remove, SteamAudioMaterial>, mut commands: Command
 fn remove_static(remove: On<Remove, Static>, mut commands: Commands) {
     commands
         .entity(remove.entity)
-        .try_remove::<SteamAudioStaticMesh>();
+        .try_remove::<SteamAudioStaticMesh>()
+        .try_insert(InSteamAudioMeshSpawnQueue);
 }
 
-fn add_static(remove: On<Add, Static>, mut commands: Commands) {
+fn add_static(add: On<Add, Static>, mut commands: Commands) {
     commands
-        .entity(remove.entity)
-        .try_remove::<SteamAudioInstancedMesh>();
+        .entity(add.entity)
+        .try_remove::<SteamAudioInstancedMesh>()
+        .try_insert(InSteamAudioMeshSpawnQueue);
 }
 
 fn remove_dynamic_mesh_from_scene(
@@ -78,3 +84,21 @@ fn remove_static_mesh_from_scene(
     root.remove_static_mesh(&static_mesh.0);
     Ok(())
 }
+
+fn update_transforms(
+    transforms: Query<(Ref<GlobalTransform>, &SteamAudioInstancedMesh)>,
+    mut root: ResMut<SteamAudioRootScene>,
+) {
+    for (transform, instanced_mesh) in transforms.iter() {
+        if !transform.is_changed() {
+            continue;
+        }
+        let transform = transform.to_steam_audio_transform();
+
+        root.update_instanced_mesh_transform(&instanced_mesh.0, transform);
+    }
+}
+
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+pub struct InSteamAudioMeshSpawnQueue;

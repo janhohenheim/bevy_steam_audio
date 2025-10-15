@@ -9,11 +9,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             SeedlingPlugin::default(),
-            // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
-            // Steam Audio still needs some scene backend to know how to build its 3D scene.
-            // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
-            // `Mesh3d` and `MeshMaterial3d`.
             Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, setup)

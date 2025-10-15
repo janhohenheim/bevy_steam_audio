@@ -63,6 +63,7 @@ impl Plugin for SteamAudioPlugin {
             (
                 SteamAudioSystems::CreateSimulator,
                 SteamAudioSystems::MeshLifecycle,
+                SteamAudioSystems::UpdateTransforms,
                 SteamAudioSystems::UpdateSources,
                 SteamAudioSystems::RunSimulator,
                 SteamAudioSystems::GenerateProbes,
@@ -86,6 +87,7 @@ impl Plugin for SteamAudioPlugin {
 pub enum SteamAudioSystems {
     CreateSimulator,
     MeshLifecycle,
+    UpdateTransforms,
     GenerateProbes,
     UpdateSources,
     RunSimulator,
