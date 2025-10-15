@@ -5,10 +5,7 @@ use bevy::{
     time::common_conditions::on_timer,
 };
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
 mod util;
 use util::prelude::*;
@@ -76,10 +73,9 @@ fn set_material(
 ) {
     for child in children.iter_descendants(ready.entity) {
         if meshes.contains(child) {
-            commands.entity(child).insert(SteamAudioMesh {
-                dynamic: false,
-                ..default()
-            });
+            commands
+                .entity(child)
+                .insert((SteamAudioMaterial::GENERIC, Static));
         }
     }
 }

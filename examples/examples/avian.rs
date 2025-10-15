@@ -2,7 +2,7 @@ use avian_steam_audio::prelude::*;
 use avian3d::prelude::*;
 use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{prelude::*, scene::mesh_backend::SteamAudioMesh};
+use bevy_steam_audio::prelude::*;
 
 fn main() {
     App::new()
@@ -37,7 +37,7 @@ fn setup(
         Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
         Transform::from_xyz(1.0, 0.0, 0.0),
-        SteamAudioMesh::default(),
+        SteamAudioMaterial::default(),
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
     ));

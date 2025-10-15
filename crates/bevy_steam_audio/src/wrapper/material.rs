@@ -9,7 +9,8 @@ pub(super) fn plugin(app: &mut App) {
 /// You can specify the acoustic material properties of each triangle, although typically many triangles will share a common material.
 ///
 /// The acoustic material properties are specified for three frequency bands with center frequencies of 400 Hz, 2.5 KHz, and 15 KHz.
-#[derive(Copy, Clone, PartialEq, Debug, Reflect)]
+#[derive(Component, Copy, Clone, PartialEq, Debug, Reflect)]
+#[reflect(Component)]
 pub struct SteamAudioMaterial {
     /// Fraction of sound energy absorbed at low, middle, high frequencies.
     ///

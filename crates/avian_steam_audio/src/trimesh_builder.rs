@@ -1,6 +1,7 @@
 //! Types used for creating triangle meshes from [`Collider`]s.
 //! This is copy-pasted from <https://github.com/Jondolf/avian/pull/866> until released.
 
+#![expect(dead_code)]
 use core::num::NonZeroU32;
 
 use avian3d::math::{AsF32 as _, Vector};
@@ -11,8 +12,6 @@ use bevy_mesh::prelude::*;
 use bevy_reflect::prelude::*;
 use bevy_utils::default;
 use thiserror::Error;
-
-use crate::prelude::*;
 
 /// An ergonomic builder for triangle meshes from [`Collider`]s.
 ///

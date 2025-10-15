@@ -37,6 +37,7 @@ pub mod prelude {
             SteamAudioReverbPool,
         },
         probes::GenerateProbes,
+        scene::Static,
         settings::{
             SteamAudioDirectQuality, SteamAudioPathingQuality, SteamAudioQuality,
             SteamAudioReflectionsQuality,
