@@ -2,7 +2,7 @@ use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
 };
 
 fn main() {
@@ -11,7 +11,7 @@ fn main() {
             DefaultPlugins,
             SeedlingPlugin::default(),
             SteamAudioPlugin::default(),
-            Mesh3dBackendPlugin::default(),
+            Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, (spawn_custom_pool, setup))
         // Make sure to require `SteamAudioSamplePlayer` or you won't be able to hear anything

@@ -4,13 +4,15 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bevy::prelude::*;
-use bevy_app::{PluginsState, ScheduleRunnerPlugin};
-use bevy_mesh::MeshPlugin;
+use bevy::{
+    app::{PluginsState, ScheduleRunnerPlugin},
+    mesh::MeshPlugin,
+    prelude::*,
+};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
 };
 use criterion::{Criterion, criterion_group, criterion_main};
 
@@ -27,7 +29,7 @@ fn bevy_app(num_sources: usize) -> App {
         TransformPlugin,
         SeedlingPlugin::default(),
         SteamAudioPlugin::default(),
-        Mesh3dBackendPlugin::default(),
+        Mesh3dSteamAudioScenePlugin::default(),
     ))
     .insert_resource(SteamAudioQuality {
         reflections: SteamAudioReflectionsQuality {

@@ -1,14 +1,16 @@
 use std::time::Duration;
 
-use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    color::palettes::tailwind, prelude::*, scene::SceneInstanceReady,
+    time::common_conditions::on_timer,
+};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
 };
 
 mod util;
-use bevy_time::common_conditions::on_timer;
 use util::prelude::*;
 
 fn main() {
@@ -17,7 +19,7 @@ fn main() {
             DefaultPlugins,
             SeedlingPlugin::default(),
             SteamAudioPlugin::default(),
-            Mesh3dBackendPlugin::default(),
+            Mesh3dSteamAudioScenePlugin::default(),
             CameraControllerPlugin,
         ))
         .add_systems(Startup, setup)

@@ -1,0 +1,24 @@
+[package]
+name = "steam_audio_examples"
+description = "Examples for Bevy + Steam Audio"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bevy_steam_audio = { workspace = true }
+avian_steam_audio = { workspace = true }
+bevy = { workspace = true }
+bevy_seedling = { workspace = true }
+avian3d = { workspace = true, default-features = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+bevy = { workspace = true, features = ["dynamic_linking"] }
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "full_app"
+harness = false

@@ -4,7 +4,7 @@ use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
-    scene::mesh_backend::{Mesh3dBackendPlugin, SteamAudioMesh},
+    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
 };
 
 fn main() {
@@ -15,9 +15,9 @@ fn main() {
             // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
             // Steam Audio still needs some scene backend to know how to build its 3D scene.
-            // Mesh3dBackendPlugin does this by using all entities that hold both
+            // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
             // `Mesh3d` and `MeshMaterial3d`.
-            Mesh3dBackendPlugin::default(),
+            Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_audio)
