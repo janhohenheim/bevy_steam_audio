@@ -114,6 +114,16 @@ pub enum SteamAudioReflectionKind {
     Hybrid,
 }
 
+impl From<SteamAudioReflectionKind> for audionimbus::ReflectionEffectType {
+    fn from(kind: SteamAudioReflectionKind) -> Self {
+        match kind {
+            SteamAudioReflectionKind::Convolution => audionimbus::ReflectionEffectType::Convolution,
+            SteamAudioReflectionKind::Parametric => audionimbus::ReflectionEffectType::Parametric,
+            SteamAudioReflectionKind::Hybrid => audionimbus::ReflectionEffectType::Hybrid,
+        }
+    }
+}
+
 impl SteamAudioReflectionsQuality {
     pub(crate) fn to_audionimbus(
         self,
@@ -187,6 +197,11 @@ impl SteamAudioQuality {
             pathing_visualization_callback: None,
         }
     }
+
+    pub(crate) fn impulse_response_size(self, sampling_rate: u32) -> u32 {
+        (self.reflections.impulse_duration.as_secs_f32() * sampling_rate as f32).ceil() as u32
+    }
+
     pub fn num_channels(self) -> u32 {
         order_to_num_channels(self.order)
     }

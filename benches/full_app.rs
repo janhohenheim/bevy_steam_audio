@@ -6,7 +6,6 @@ use std::{
 
 use bevy::prelude::*;
 use bevy_app::{PluginsState, ScheduleRunnerPlugin};
-use bevy_log::LogPlugin;
 use bevy_mesh::MeshPlugin;
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
@@ -90,7 +89,7 @@ fn benchmarks(c: &mut Criterion) {
                     sleep(frame_time - elapsed);
                 }
                 last = Instant::now();
-            })
+            });
         });
     };
     bench(1);
