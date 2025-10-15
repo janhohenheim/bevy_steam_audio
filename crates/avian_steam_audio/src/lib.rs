@@ -7,5 +7,5 @@ pub mod prelude {
 pub struct AvianSteamAudioScenePlugin;
 
 impl Plugin for AvianSteamAudioScenePlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, _app: &mut App) {}
 }

@@ -4,9 +4,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bevy::prelude::*;
-use bevy_app::{PluginsState, ScheduleRunnerPlugin};
-use bevy_mesh::MeshPlugin;
+use bevy::{
+    app::{PluginsState, ScheduleRunnerPlugin},
+    mesh::MeshPlugin,
+    prelude::*,
+};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{
     prelude::*,
