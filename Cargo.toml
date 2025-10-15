@@ -98,12 +98,6 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "dynamic_linking"
 ] }
 
-[profile.dev.package."*"]
-inherits = "dev"
-opt-level = 3
-
-[profile.dev]
-opt-level = 0
 
 [workspace.lints.rust]
 #missing_docs = "warn"
@@ -132,3 +126,20 @@ allow_attributes_without_reason = "warn"
 [patch.crates-io]
 firewheel = { git = "https://github.com/BillyDM/firewheel" }
 bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0" }
+
+[profile.dev.package."*"]
+inherits = "dev"
+opt-level = 3
+
+[profile.dev]
+opt-level = 0
+
+# Optimize for build time in CI.
+[profile.ci]
+inherits = "dev"
+opt-level = 0
+debug = "line-tables-only"
+codegen-units = 4
+
+[profile.ci.package."*"]
+opt-level = 0
