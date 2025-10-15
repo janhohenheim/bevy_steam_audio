@@ -1,7 +1,13 @@
 [package]
 name = "avian_steam_audio"
 version = "0.1.0"
-edition = "2024"
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+readme = { workspace = true }
 
 [dependencies]
 bevy_steam_audio = { workspace = true }
@@ -21,6 +27,9 @@ bevy_time = { workspace = true }
 bevy_tasks = { workspace = true }
 bevy_camera = { workspace = true }
 avian3d = { workspace = true }
+
+[dev-dependencies]
+avian3d = { workspace = true, features = ["f32"]}
 
 [lints]
 workspace = true

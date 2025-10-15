@@ -10,7 +10,7 @@ bevy_steam_audio = { workspace = true }
 avian_steam_audio = { workspace = true }
 bevy = { workspace = true }
 bevy_seedling = { workspace = true }
-avian3d = { workspace = true, features = ["f32"] }
+avian3d = { workspace = true, default-features = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

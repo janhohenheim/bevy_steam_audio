@@ -14,8 +14,8 @@ readme = { workspace = true }
 auto-install = ["audionimbus/auto-install"]
 
 [dependencies]
-audionimbus = { version = "0.9.0", default-features = false }
-audionimbus-sys = { version = "4.7.1-rc.1",  default-features = false }
+audionimbus = { workspace = true }
+audionimbus-sys = { workspace = true }
 
 bevy_seedling = { workspace = true }
 bevy_app = { workspace = true }
@@ -37,9 +37,6 @@ itertools = { workspace = true }
 firewheel = { workspace = true }
 crossbeam-channel = { workspace = true }
 prealloc_ref_vec = { workspace = true }
-
-
-
 
 [lints]
 workspace = true
