@@ -1,5 +1,8 @@
 use bevy_app::prelude::*;
 
+mod trimesh_builder;
+use trimesh_builder::ColliderTrimeshBuilder as _;
+
 pub mod prelude {
     pub use crate::AvianSteamAudioScenePlugin;
 }

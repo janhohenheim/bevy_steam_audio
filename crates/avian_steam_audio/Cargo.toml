@@ -27,6 +27,7 @@ bevy_time = { workspace = true }
 bevy_tasks = { workspace = true }
 bevy_camera = { workspace = true }
 avian3d = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 avian3d = { workspace = true, features = ["f32"]}
