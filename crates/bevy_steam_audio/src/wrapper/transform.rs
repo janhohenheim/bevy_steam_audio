@@ -4,7 +4,7 @@ pub(super) fn plugin(app: &mut App) {
     let _ = app;
 }
 
-pub(crate) trait ToSteamAudioTransform: Copy {
+pub trait ToSteamAudioTransform: Copy {
     fn to_steam_audio_transform(self) -> audionimbus::Matrix<f32, 4, 4>;
 }
 

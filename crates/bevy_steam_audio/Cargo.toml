@@ -11,7 +11,9 @@ categories = { workspace = true }
 readme = { workspace = true }
 
 [features]
+default = ["debug"]
 auto-install = ["audionimbus/auto-install"]
+debug = ["dep:bevy_gizmos", "dep:bevy_color"]
 
 [dependencies]
 audionimbus = { workspace = true }
@@ -32,6 +34,8 @@ bevy_mesh = { workspace = true }
 bevy_time = { workspace = true }
 bevy_tasks = { workspace = true }
 bevy_camera = { workspace = true }
+bevy_gizmos = { workspace = true, optional = true }
+bevy_color = { workspace = true, optional = true }
 
 itertools = { workspace = true }
 firewheel = { workspace = true }

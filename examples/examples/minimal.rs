@@ -1,9 +1,6 @@
 use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
 fn main() {
     App::new()
@@ -14,7 +11,7 @@ fn main() {
             SteamAudioPlugin::default(),
             // Steam Audio still needs some scene backend to know how to build its 3D scene.
             // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
-            // `Mesh3d` and `MeshMaterial3d`.
+            // `Mesh3d` and `SteamAudioMaterial`.
             Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, setup)
@@ -46,7 +43,7 @@ fn setup(
         Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
         Transform::from_xyz(1.0, 0.0, 0.0),
-        SteamAudioMesh::default(),
+        SteamAudioMaterial::default(),
     ));
 
     commands.spawn((

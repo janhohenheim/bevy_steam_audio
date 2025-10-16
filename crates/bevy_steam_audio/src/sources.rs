@@ -71,7 +71,9 @@ fn init_audionimbus_sources(
             }
         };
         simulator.add_source(&source);
-        commands.entity(entity).insert(AudionimbusSource(source));
+        commands
+            .entity(entity)
+            .try_insert(AudionimbusSource(source));
     }
     for entity in to_retry.drain(..) {
         to_setup.push(entity);

@@ -10,10 +10,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 use criterion::{Criterion, criterion_group, criterion_main};
 
 const MAX_FRAMERATE: f32 = 200.0;
@@ -52,7 +49,7 @@ fn bevy_app(num_sources: usize) -> App {
             commands.spawn((
                 Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
                 Transform::from_xyz(0.0, 0.0, -4.0),
-                SteamAudioMesh::default(),
+                SteamAudioMaterial::default(),
             ));
 
             // Spawn sample players in a circle around the listener

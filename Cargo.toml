@@ -36,6 +36,8 @@ bevy_mesh = { version = "0.17", default-features = false }
 bevy_time = { version = "0.17", default-features = false }
 bevy_tasks = { version = "0.17", default-features = false }
 bevy_camera = { version = "0.17", default-features = false }
+bevy_gizmos = { version = "0.17", default-features = false }
+bevy_color = { version = "0.17", default-features = false }
 
 avian3d = { version = "0.4", default-features = false, features = ["3d"] }
 
@@ -44,6 +46,9 @@ firewheel = { version = "0.8.0-rc.1", default-features = false, features = ["std
 crossbeam-channel = "0.5.15"
 prealloc_ref_vec = "0.1.1"
 criterion = { version = "0.7", features = ["html_reports"] }
+thiserror = "2"
+hashbrown = "0.16"
+ordered-float = "5"
 
 bevy = { version = "0.17.0", default-features = false, features = [
   "std",

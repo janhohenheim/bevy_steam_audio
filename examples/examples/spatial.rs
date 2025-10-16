@@ -2,21 +2,14 @@ use std::f32::consts::TAU;
 
 use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
             SeedlingPlugin::default(),
-            // Add the SteamAudioPlugin to the app to enable Steam Audio functionality
             SteamAudioPlugin::default(),
-            // Steam Audio still needs some scene backend to know how to build its 3D scene.
-            // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
-            // `Mesh3d` and `MeshMaterial3d`.
             Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, setup)
@@ -48,7 +41,7 @@ fn setup(
         Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
         MeshMaterial3d(materials.add(Color::from(tailwind::RED_700).with_alpha(0.7))),
         Transform::from_xyz(0.0, 0.0, -1.0),
-        SteamAudioMesh::default(),
+        SteamAudioMaterial::default(),
     ));
 
     // The sample player uses Steam Audio through the SteamAudioPool

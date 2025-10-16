@@ -1,14 +1,6 @@
-use std::time::Duration;
-
-use bevy::{
-    color::palettes::tailwind, prelude::*, scene::SceneInstanceReady,
-    time::common_conditions::on_timer,
-};
+use bevy::{color::palettes::tailwind, prelude::*, scene::SceneInstanceReady};
 use bevy_seedling::prelude::*;
-use bevy_steam_audio::{
-    prelude::*,
-    scene::mesh_backend::{Mesh3dSteamAudioScenePlugin, SteamAudioMesh},
-};
+use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
 mod util;
 use util::prelude::*;
@@ -23,10 +15,6 @@ fn main() {
             CameraControllerPlugin,
         ))
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            generate_pathing_probes.run_if(on_timer(Duration::from_secs(1))),
-        )
         .run();
 }
 
@@ -76,17 +64,9 @@ fn set_material(
 ) {
     for child in children.iter_descendants(ready.entity) {
         if meshes.contains(child) {
-            commands.entity(child).insert(SteamAudioMesh {
-                dynamic: false,
-                ..default()
-            });
+            commands
+                .entity(child)
+                .insert((SteamAudioMaterial::GENERIC, Static));
         }
-    }
-}
-
-fn generate_pathing_probes(mut probe_writer: MessageWriter<GenerateProbes>, mut ran: Local<bool>) {
-    if !*ran {
-        probe_writer.write(GenerateProbes::default());
-        *ran = true;
     }
 }

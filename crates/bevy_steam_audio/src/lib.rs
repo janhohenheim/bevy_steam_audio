@@ -9,18 +9,22 @@ pub mod probes;
 pub mod scene;
 pub mod simulation;
 pub mod sources;
-mod wrapper;
+pub mod wrapper;
 pub use audionimbus;
-pub use audionimbus::Material as SteamAudioMaterial;
-
+#[cfg(feature = "debug")]
+pub mod debug;
 pub mod settings;
 
 pub mod prelude {
+    #[cfg(feature = "debug")]
+    pub(crate) use crate::debug::SteamAudioGizmo;
     pub(crate) use crate::{STEAM_AUDIO_CONTEXT, SteamAudioSystems};
     pub(crate) use bevy_app::prelude::*;
     pub(crate) use bevy_asset::prelude::*;
     pub(crate) use bevy_derive::{Deref, DerefMut};
     pub(crate) use bevy_ecs::{error::Result, prelude::*};
+    #[cfg(feature = "debug")]
+    pub(crate) use bevy_gizmos::prelude::*;
     pub(crate) use bevy_log::prelude::*;
     pub(crate) use bevy_math::prelude::*;
     pub(crate) use bevy_mesh::prelude::*;
@@ -31,17 +35,21 @@ pub mod prelude {
     pub(crate) use bevy_transform::prelude::*;
     pub(crate) use bevy_utils::prelude::*;
 
+    #[cfg(feature = "debug")]
+    pub use crate::debug::SteamAudioDebugPlugin;
     pub use crate::{
-        SteamAudioListener, SteamAudioMaterial, SteamAudioPlugin, SteamAudioSamplePlayer,
+        SteamAudioListener, SteamAudioPlugin, SteamAudioSamplePlayer,
         nodes::{
             AmbisonicDecodeNode, SteamAudioNode, SteamAudioPool, SteamAudioReverbNode,
             SteamAudioReverbPool,
         },
         probes::GenerateProbes,
+        scene::Static,
         settings::{
             SteamAudioDirectQuality, SteamAudioPathingQuality, SteamAudioQuality,
             SteamAudioReflectionsQuality,
         },
+        wrapper::SteamAudioMaterial,
     };
 }
 
@@ -62,9 +70,11 @@ impl Plugin for SteamAudioPlugin {
             (
                 SteamAudioSystems::CreateSimulator,
                 SteamAudioSystems::MeshLifecycle,
+                SteamAudioSystems::UpdateTransforms,
                 SteamAudioSystems::UpdateSources,
                 SteamAudioSystems::RunSimulator,
                 SteamAudioSystems::GenerateProbes,
+                SteamAudioSystems::Gizmos,
             )
                 .chain()
                 .after(TransformSystems::Propagate),
@@ -85,9 +95,11 @@ impl Plugin for SteamAudioPlugin {
 pub enum SteamAudioSystems {
     CreateSimulator,
     MeshLifecycle,
+    UpdateTransforms,
     GenerateProbes,
     UpdateSources,
     RunSimulator,
+    Gizmos,
 }
 
 #[derive(Component, Reflect, Debug)]
