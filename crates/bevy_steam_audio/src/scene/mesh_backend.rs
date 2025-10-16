@@ -5,7 +5,10 @@ use bevy_platform::collections::HashMap;
 
 use crate::{
     prelude::*,
-    scene::{InSteamAudioMeshSpawnQueue, Static, SteamAudioInstancedMesh, SteamAudioRootScene},
+    scene::{
+        InSteamAudioMeshSpawnQueue, Static, SteamAudioInstancedMesh, SteamAudioRootScene,
+        SteamAudioStaticMesh,
+    },
     wrapper::{ToSteamAudioMesh as _, ToSteamAudioTransform},
 };
 
@@ -147,7 +150,10 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            root.add_static_mesh(static_mesh);
+            root.add_static_mesh(static_mesh.clone());
+            commands
+                .entity(entity)
+                .try_insert(SteamAudioStaticMesh(static_mesh));
         }
 
         commands

@@ -37,10 +37,10 @@ impl Default for SteamAudioRootScene {
 pub struct Static;
 
 #[derive(Component)]
-pub struct SteamAudioInstancedMesh(audionimbus::InstancedMesh);
+pub struct SteamAudioInstancedMesh(pub audionimbus::InstancedMesh);
 
 #[derive(Component)]
-pub struct SteamAudioStaticMesh(audionimbus::StaticMesh);
+pub struct SteamAudioStaticMesh(pub audionimbus::StaticMesh);
 
 fn remove_material(remove: On<Remove, SteamAudioMaterial>, mut commands: Commands) {
     commands

@@ -45,6 +45,8 @@ crossbeam-channel = "0.5.15"
 prealloc_ref_vec = "0.1.1"
 criterion = { version = "0.7", features = ["html_reports"] }
 thiserror = "2"
+hashbrown = "0.16"
+ordered-float = "5"
 
 bevy = { version = "0.17.0", default-features = false, features = [
   "std",

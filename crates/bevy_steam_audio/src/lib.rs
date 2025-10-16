@@ -9,7 +9,7 @@ pub mod probes;
 pub mod scene;
 pub mod simulation;
 pub mod sources;
-mod wrapper;
+pub mod wrapper;
 pub use audionimbus;
 
 pub mod settings;

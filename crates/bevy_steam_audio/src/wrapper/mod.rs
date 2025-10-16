@@ -7,8 +7,8 @@ pub(crate) mod transform;
 pub(crate) use channel_ptrs::*;
 pub use coordinate_system::*;
 pub use material::*;
-pub(crate) use mesh::*;
-pub(crate) use transform::*;
+pub use mesh::*;
+pub use transform::*;
 
 use crate::prelude::*;
 
