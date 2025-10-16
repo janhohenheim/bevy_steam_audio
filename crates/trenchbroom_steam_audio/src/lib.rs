@@ -11,7 +11,9 @@ use bevy_steam_audio::{
     wrapper::{SteamAudioMaterial, ToSteamAudioMesh as _, ToSteamAudioTransform as _},
 };
 use bevy_transform::prelude::*;
-use bevy_trenchbroom::geometry::Brushes;
+use bevy_trenchbroom::{
+    geometry::Brushes, physics::SceneCollidersReady, prelude::GenericMaterial3d,
+};
 use wildmatch::WildMatch;
 
 pub mod prelude {
@@ -82,37 +84,32 @@ fn register_scene_ready_observer(
 }
 
 fn handle_scene(
-    ready: On<SceneInstanceReady>,
-    children: Query<&Children>,
+    ready: On<SceneCollidersReady>,
     brushes: Query<(), With<Brushes>>,
-    mesh_handles: Query<(&Mesh3d, &MeshMaterial3d<StandardMaterial>, &GlobalTransform)>,
+    mesh_handles: Query<(&Mesh3d, &GenericMaterial3d, &GlobalTransform)>,
     meshes: Res<Assets<Mesh>>,
     names: Query<NameOrEntity>,
     mut root: ResMut<SteamAudioRootScene>,
     settings: Res<TrenchBroomSteamAudioSettings>,
-    rigid_body: Query<(&RigidBody, Has<Static>)>,
+    rigid_body: Query<(Option<&RigidBody>, Has<Static>, &Children)>,
     mut commands: Commands,
 ) -> Result {
-    let Ok(potential_brushes) = children.get(ready.entity) else {
-        return Ok(());
-    };
     let mut errors = Vec::new();
     // All brushes are children of the scene root
-    for entity in potential_brushes {
-        let scene_entity_name = names.get(*entity).unwrap();
-        if !brushes.contains(*entity) {
+    for entity in ready.collider_entities.iter().copied() {
+        let scene_entity_name = names.get(entity).unwrap();
+        if !brushes.contains(entity) {
             continue;
         }
         // The brushes hold the total geometry, but what's more interesting to us is the individual material meshes.
         // These are one level below the brushes.
-        let Ok(potential_materials) = children.get(*entity) else {
+        let Ok((body, is_static, potential_materials)) = rigid_body.get(entity) else {
             continue;
         };
-        let is_static = rigid_body
-            .get(*entity)
-            .map(|(body, is_static): (&RigidBody, bool)| body.is_static() || is_static)
-            // If there is no Rigid Body, this brush is user-managed. Let's not make any assumptions about its staticness.
-            .unwrap_or(false);
+        let is_static = body
+            .map(|body| body.is_static() || is_static)
+            .unwrap_or(is_static);
+
         for entity in potential_materials {
             let mat_entity_name = names.get(*entity).unwrap();
             let Ok((mesh, material, transform)) = mesh_handles.get(*entity) else {
@@ -155,7 +152,6 @@ fn handle_scene(
                 commands
                     .entity(*entity)
                     .insert(SteamAudioStaticMesh(audio_mesh));
-                println!("Static mesh created successfully");
             } else {
                 let mut sub_scene = match audionimbus::Scene::try_new(
                     &STEAM_AUDIO_CONTEXT,
@@ -201,7 +197,6 @@ fn handle_scene(
                 commands
                     .entity(*entity)
                     .try_insert(SteamAudioInstancedMesh(instanced_mesh));
-                println!("Instanced mesh created successfully");
             }
 
             #[cfg(feature = "debug")]

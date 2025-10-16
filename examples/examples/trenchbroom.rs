@@ -6,6 +6,10 @@ use bevy_steam_audio::prelude::*;
 use bevy_trenchbroom::prelude::*;
 use trenchbroom_steam_audio::prelude::*;
 
+use crate::util::prelude::{CameraController, CameraControllerPlugin};
+
+mod util;
+
 fn main() {
     App::new()
         .add_plugins((
@@ -25,6 +29,7 @@ fn main() {
                     }),
             ),
             SteamAudioDebugPlugin,
+            CameraControllerPlugin,
         ))
         .add_systems(Startup, setup)
         .run();
@@ -37,7 +42,11 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // The camera is our listener using SteamAudioListener
-    commands.spawn((Camera3d::default(), SteamAudioListener));
+    commands.spawn((
+        Camera3d::default(),
+        SteamAudioListener,
+        CameraController::default(),
+    ));
 
     // The sample player uses Steam Audio through the SteamAudioPool
     // Let's place it to the front left of the listener, making direct sound come from the left
