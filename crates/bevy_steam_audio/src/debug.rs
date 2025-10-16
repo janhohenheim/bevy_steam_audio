@@ -1,5 +1,6 @@
 use bevy_color::{Color, palettes::tailwind};
 use bevy_ecs::entity_disabling::Disabled;
+use thiserror::Error;
 
 use crate::prelude::*;
 
@@ -17,6 +18,50 @@ impl Plugin for SteamAudioDebugPlugin {
 pub struct SteamAudioGizmo {
     pub vertices: Vec<Vec3>,
     pub indices: Vec<[u32; 3]>,
+}
+
+#[derive(Error, Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SteamAudioGizmoError {
+    #[error("Mesh has no positions")]
+    NoPositions,
+    #[error("Mesh has no indices")]
+    NoIndices,
+}
+
+impl TryFrom<&Mesh> for SteamAudioGizmo {
+    type Error = SteamAudioGizmoError;
+
+    fn try_from(mesh: &Mesh) -> Result<Self, Self::Error> {
+        use itertools::Itertools as _;
+
+        let Some(vertices) = mesh
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .and_then(|p| p.as_float3())
+        else {
+            return Err(SteamAudioGizmoError::NoPositions);
+        };
+
+        let Some(indices) = mesh.indices() else {
+            return Err(SteamAudioGizmoError::NoIndices);
+        };
+        let gizmo = SteamAudioGizmo {
+            vertices: vertices.iter().map(|v| Vec3::from_array(*v)).collect(),
+            indices: indices
+                .iter()
+                .chunks(3)
+                .into_iter()
+                .map(|mut chunk| {
+                    [
+                        chunk.next().unwrap() as u32,
+                        chunk.next().unwrap() as u32,
+                        chunk.next().unwrap() as u32,
+                    ]
+                })
+                .collect(),
+        };
+
+        Ok(gizmo)
+    }
 }
 
 fn update_gizmos(

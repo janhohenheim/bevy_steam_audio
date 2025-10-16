@@ -34,11 +34,11 @@ pub struct AvianSteamAudioScenePlugin;
 
 #[derive(Resource, Debug, Eq, PartialEq, Reflect)]
 #[reflect(Resource)]
-pub struct AvianSteamAudioSceneSettings {
+pub struct AvianSteamAudioSettings {
     pub auto_insert_materials: bool,
 }
 
-impl Default for AvianSteamAudioSceneSettings {
+impl Default for AvianSteamAudioSettings {
     fn default() -> Self {
         Self {
             auto_insert_materials: true,
@@ -48,7 +48,7 @@ impl Default for AvianSteamAudioSceneSettings {
 
 impl Plugin for AvianSteamAudioScenePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AvianSteamAudioSceneSettings>();
+        app.init_resource::<AvianSteamAudioSettings>();
         app.add_systems(
             PostUpdate,
             (
@@ -87,7 +87,7 @@ fn add_collider(
     collider: Query<(Has<Sensor>, Has<SteamAudioMaterial>), Allow<Disabled>>,
     mut commands: Commands,
     rigid_body: Query<&RigidBody, Allow<Disabled>>,
-    settings: Res<AvianSteamAudioSceneSettings>,
+    settings: Res<AvianSteamAudioSettings>,
 ) -> Result {
     let (has_sensor, has_material) = collider.get(add.entity)?;
     if has_sensor {

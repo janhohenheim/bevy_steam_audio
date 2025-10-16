@@ -39,6 +39,7 @@ bevy_color = { workspace = true, optional = true }
 
 itertools = { workspace = true }
 firewheel = { workspace = true }
+thiserror = { workspace = true }
 crossbeam-channel = { workspace = true }
 prealloc_ref_vec = { workspace = true }
 
