@@ -1,10 +1,6 @@
-use std::time::Duration;
-
 use avian_steam_audio::AvianSteamAudioScenePlugin;
 use avian3d::PhysicsPlugins;
-use bevy::{
-    camera::Exposure, color::palettes::tailwind, prelude::*, time::common_conditions::on_timer,
-};
+use bevy::{camera::Exposure, color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::prelude::*;
 use bevy_trenchbroom::prelude::*;

@@ -19,7 +19,6 @@ bevy_ecs = { workspace = true }
 bevy_scene = { workspace = true }
 bevy_mesh = { workspace = true }
 bevy_asset = { workspace = true }
-bevy_pbr = { workspace = true }
 bevy_transform = { workspace = true }
 bevy_steam_audio = { workspace = true }
 bevy_trenchbroom = { workspace = true }

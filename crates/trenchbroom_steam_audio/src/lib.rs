@@ -3,8 +3,7 @@ use bevy_app::prelude::*;
 use bevy_asset::prelude::*;
 use bevy_ecs::{entity_disabling::Disabled, prelude::*};
 use bevy_mesh::prelude::*;
-use bevy_pbr::prelude::*;
-use bevy_scene::{SceneInstanceReady, prelude::*};
+use bevy_scene::prelude::*;
 use bevy_steam_audio::{
     STEAM_AUDIO_CONTEXT, audionimbus,
     scene::{
@@ -121,9 +120,7 @@ fn handle_scene(
 
         for entity in potential_materials {
             let mat_entity_name = names.get(*entity).unwrap();
-            eprintln!("Entity: {mat_entity_name}");
             let Ok((mesh, material, transform)) = mesh_handles.get(*entity) else {
-                eprintln!("fock");
                 continue;
             };
             let Some(material_name) = material.0.path() else {
