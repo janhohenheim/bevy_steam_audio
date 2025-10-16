@@ -9,6 +9,10 @@ keywords = { workspace = true }
 categories = { workspace = true }
 readme = { workspace = true }
 
+[features]
+default = ["debug"]
+debug = []
+
 [dependencies]
 bevy_steam_audio = { workspace = true }
 bevy_seedling = { workspace = true }

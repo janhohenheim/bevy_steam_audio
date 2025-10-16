@@ -60,9 +60,9 @@ fn add_collider(
     let rigid_body = rigid_body.get(add.entity)?;
     commands
         .entity(add.entity)
-        .insert(InSteamAudioMeshSpawnQueue);
+        .try_insert(InSteamAudioMeshSpawnQueue);
     if rigid_body.is_static() {
-        commands.entity(add.entity).insert(Static);
+        commands.entity(add.entity).try_insert(Static);
     }
     Ok(())
 }
@@ -98,7 +98,9 @@ fn queue_steam_audio_mesh_processing(
 ) {
     for (entity, mesh) in colliders.iter() {
         if mesh.is_changed() {
-            commands.entity(entity).insert(InSteamAudioMeshSpawnQueue);
+            commands
+                .entity(entity)
+                .try_insert(InSteamAudioMeshSpawnQueue);
         }
     }
 }
@@ -224,6 +226,22 @@ fn spawn_new_steam_audio_meshes(
         commands
             .entity(entity)
             .try_remove::<InSteamAudioMeshSpawnQueue>();
+        #[cfg(feature = "debug")]
+        {
+            use bevy_steam_audio::debug::SpawnSteamAudioGizmo;
+            let mesh = match collider.trimesh_builder().build() {
+                Ok(mesh) => mesh,
+                Err(err) => {
+                    errors.push(format!("{name}: Failed to convert mesh: {err}"));
+                    continue;
+                }
+            };
+            let gizmo = SpawnSteamAudioGizmo {
+                vertices: mesh.vertices,
+                indices: mesh.indices,
+            };
+            commands.entity(entity).insert(gizmo);
+        }
         continue;
     }
     // Do not call root.commit(), it's not safe while simulations are running

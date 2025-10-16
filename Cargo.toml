@@ -36,6 +36,8 @@ bevy_mesh = { version = "0.17", default-features = false }
 bevy_time = { version = "0.17", default-features = false }
 bevy_tasks = { version = "0.17", default-features = false }
 bevy_camera = { version = "0.17", default-features = false }
+bevy_gizmos = { version = "0.17", default-features = false }
+bevy_color = { version = "0.17", default-features = false }
 
 avian3d = { version = "0.4", default-features = false, features = ["3d"] }
 

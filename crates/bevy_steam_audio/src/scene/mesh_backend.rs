@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use bevy_ecs::entity_disabling::Disabled;
 use bevy_platform::collections::HashMap;
 
 use crate::{
@@ -51,7 +50,9 @@ fn queue_steam_audio_mesh_processing(
 ) {
     for (entity, mesh) in meshes.iter() {
         if mesh.is_changed() {
-            commands.entity(entity).insert(InSteamAudioMeshSpawnQueue);
+            commands
+                .entity(entity)
+                .try_insert(InSteamAudioMeshSpawnQueue);
         }
     }
 }
@@ -159,7 +160,44 @@ fn spawn_new_steam_audio_meshes(
         commands
             .entity(entity)
             .try_remove::<InSteamAudioMeshSpawnQueue>();
-        continue;
+
+        #[cfg(feature = "debug")]
+        {
+            use itertools::Itertools as _;
+            let vertices = match mesh
+                .attribute(Mesh::ATTRIBUTE_POSITION)
+                .and_then(|p| p.as_float3())
+            {
+                Some(positions) => positions,
+                None => {
+                    errors.push(format!("{name}: Mesh has no positions"));
+                    continue;
+                }
+            };
+            let indices = match mesh.indices() {
+                Some(indices) => indices,
+                _ => {
+                    errors.push(format!("{name}: Mesh has no indices"));
+                    continue;
+                }
+            };
+            let gizmo = SpawnSteamAudioGizmo {
+                vertices: vertices.into_iter().map(|v| Vec3::from_array(*v)).collect(),
+                indices: indices
+                    .iter()
+                    .chunks(3)
+                    .into_iter()
+                    .map(|mut chunk| {
+                        [
+                            chunk.next().unwrap() as u32,
+                            chunk.next().unwrap() as u32,
+                            chunk.next().unwrap() as u32,
+                        ]
+                    })
+                    .collect(),
+            };
+            commands.entity(entity).insert(gizmo);
+        }
     }
     // Do not call root.commit(), it's not safe while simulations are running
 
