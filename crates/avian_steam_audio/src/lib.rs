@@ -3,14 +3,11 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use avian3d::{
-    parry::shape::{Shape, SharedShape, TypedShape},
-    prelude::*,
-};
+use avian3d::{parry::shape::Shape, prelude::*};
 use bevy_app::prelude::*;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{entity_disabling::Disabled, prelude::*};
-use bevy_platform::collections::{HashMap, HashTable};
+use bevy_platform::collections::HashMap;
 use bevy_steam_audio::{
     STEAM_AUDIO_CONTEXT, SteamAudioSystems,
     prelude::*,
@@ -21,8 +18,7 @@ use bevy_steam_audio::{
     wrapper::ToSteamAudioTransform as _,
 };
 use bevy_transform::prelude::*;
-use hashbrown::DefaultHashBuilder;
-use std::hash::{BuildHasher as _, Hash};
+use std::hash::Hash;
 use trimesh_builder::ColliderTrimeshBuilder as _;
 
 use crate::trimesh_builder::Trimesh;
@@ -223,10 +219,10 @@ fn spawn_new_steam_audio_meshes(
 }
 
 fn garbage_collect_meshes(mut map: ResMut<ShapeToScene>) {
-    map.retain(|shape, _| Weak::strong_count(&shape) > 0);
+    map.retain(|shape, _| Weak::strong_count(shape) > 0);
 }
 
-trait ToSteamAudioMesh {
+pub trait ToSteamAudioMesh {
     fn to_steam_audio_mesh(
         &self,
         scene: &audionimbus::Scene,

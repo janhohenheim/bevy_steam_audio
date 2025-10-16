@@ -1,7 +1,9 @@
 //! Types used for creating triangle meshes from [`Collider`]s.
-//! This is copy-pasted from <https://github.com/Jondolf/avian/pull/866> until released.
 
-#![expect(dead_code)]
+#![expect(
+    dead_code,
+    reason = "This is copy-pasted from <https://github.com/Jondolf/avian/pull/866> until released"
+)]
 use core::num::NonZeroU32;
 
 use avian3d::math::{AsF32 as _, Vector};
@@ -177,7 +179,7 @@ impl TrimeshBuilder {
                     assert!(
                         phi.get() >= 2,
                         "Capsule phi subdivisions must be at least 2"
-                    )
+                    );
                 })
                 .unwrap_or_else(|_| panic!("Capsule phi subdivisions must be non-zero")),
         ));

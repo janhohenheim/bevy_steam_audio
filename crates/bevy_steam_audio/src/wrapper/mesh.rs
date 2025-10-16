@@ -7,7 +7,7 @@ pub(super) fn plugin(app: &mut App) {
     let _ = app;
 }
 
-pub(crate) trait ToSteamAudioMesh {
+pub trait ToSteamAudioMesh {
     fn to_steam_audio_mesh(
         &self,
         scene: &audionimbus::Scene,
