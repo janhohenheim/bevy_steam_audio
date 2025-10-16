@@ -6,9 +6,7 @@ pub mod mesh_backend;
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<SteamAudioRootScene>();
-    app.add_observer(remove_static)
-        .add_observer(add_static)
-        .add_observer(remove_material)
+    app.add_observer(remove_material)
         .add_observer(remove_dynamic_mesh_from_scene)
         .add_observer(remove_static_mesh_from_scene);
     app.add_systems(
@@ -47,20 +45,6 @@ fn remove_material(remove: On<Remove, SteamAudioMaterial>, mut commands: Command
         .entity(remove.entity)
         .try_remove::<SteamAudioInstancedMesh>()
         .try_remove::<SteamAudioStaticMesh>();
-}
-
-fn remove_static(remove: On<Remove, Static>, mut commands: Commands) {
-    commands
-        .entity(remove.entity)
-        .try_remove::<SteamAudioStaticMesh>()
-        .try_insert(InSteamAudioMeshSpawnQueue);
-}
-
-fn add_static(add: On<Add, Static>, mut commands: Commands) {
-    commands
-        .entity(add.entity)
-        .try_remove::<SteamAudioInstancedMesh>()
-        .try_insert(InSteamAudioMeshSpawnQueue);
 }
 
 fn remove_dynamic_mesh_from_scene(

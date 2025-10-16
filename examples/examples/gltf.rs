@@ -66,7 +66,7 @@ fn set_material(
         if meshes.contains(child) {
             commands
                 .entity(child)
-                .insert((SteamAudioMaterial::GENERIC, Static));
+                .try_insert((SteamAudioMaterial::GENERIC, Static));
         }
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "avian_steam_audio"
+name = "trenchbroom_steam_audio"
 version = "0.1.0"
 authors = { workspace = true }
 edition = { workspace = true }
@@ -14,27 +14,16 @@ default = ["debug"]
 debug = ["bevy_steam_audio/debug"]
 
 [dependencies]
-bevy_steam_audio = { workspace = true }
-bevy_seedling = { workspace = true }
 bevy_app = { workspace = true }
 bevy_ecs = { workspace = true }
-bevy_transform = { workspace = true }
-bevy_math = { workspace = true }
-bevy_utils = { workspace = true }
-bevy_log = { workspace = true }
-bevy_reflect = { workspace = true }
-bevy_derive = { workspace = true }
-bevy_platform = { workspace = true }
-bevy_asset = { workspace = true }
+bevy_scene = { workspace = true }
 bevy_mesh = { workspace = true }
-bevy_time = { workspace = true }
-bevy_tasks = { workspace = true }
-bevy_camera = { workspace = true }
+bevy_asset = { workspace = true }
+bevy_transform = { workspace = true }
+bevy_steam_audio = { workspace = true }
+bevy_trenchbroom = { workspace = true }
+wildmatch = { workspace = true }
 avian3d = { workspace = true }
-thiserror = { workspace = true }
-audionimbus = { workspace = true }
-hashbrown = { workspace = true }
-ordered-float = { workspace = true }
 
 [dev-dependencies]
 avian3d = { workspace = true, features = ["f32"]}

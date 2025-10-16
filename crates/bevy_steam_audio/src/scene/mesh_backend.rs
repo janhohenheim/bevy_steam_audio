@@ -163,36 +163,15 @@ fn spawn_new_steam_audio_meshes(
 
         #[cfg(feature = "debug")]
         {
-            use itertools::Itertools as _;
-
-            let Some(vertices) = mesh
-                .attribute(Mesh::ATTRIBUTE_POSITION)
-                .and_then(|p| p.as_float3())
-            else {
-                errors.push(format!("{name}: Mesh has no positions"));
-                continue;
+            let gizmo = match SteamAudioGizmo::try_from(mesh) {
+                Ok(gizmo) => gizmo,
+                Err(err) => {
+                    errors.push(format!("{name}: Failed to create Gizmo: {err}"));
+                    continue;
+                }
             };
 
-            let Some(indices) = mesh.indices() else {
-                errors.push(format!("{name}: Mesh has no indices"));
-                continue;
-            };
-            let gizmo = SteamAudioGizmo {
-                vertices: vertices.iter().map(|v| Vec3::from_array(*v)).collect(),
-                indices: indices
-                    .iter()
-                    .chunks(3)
-                    .into_iter()
-                    .map(|mut chunk| {
-                        [
-                            chunk.next().unwrap() as u32,
-                            chunk.next().unwrap() as u32,
-                            chunk.next().unwrap() as u32,
-                        ]
-                    })
-                    .collect(),
-            };
-            commands.entity(entity).insert(gizmo);
+            commands.entity(entity).try_insert(gizmo);
         }
     }
     // Do not call root.commit(), it's not safe while simulations are running
