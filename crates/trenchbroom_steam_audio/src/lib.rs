@@ -7,7 +7,10 @@ use bevy_pbr::prelude::*;
 use bevy_scene::{SceneInstanceReady, prelude::*};
 use bevy_steam_audio::{
     STEAM_AUDIO_CONTEXT, audionimbus,
-    scene::{Static, SteamAudioInstancedMesh, SteamAudioRootScene, SteamAudioStaticMesh},
+    scene::{
+        InSteamAudioMeshSpawnQueue, Static, SteamAudioInstancedMesh, SteamAudioRootScene,
+        SteamAudioStaticMesh,
+    },
     wrapper::{SteamAudioMaterial, ToSteamAudioMesh as _, ToSteamAudioTransform as _},
 };
 use bevy_transform::prelude::*;
@@ -97,6 +100,11 @@ fn handle_scene(
     let mut errors = Vec::new();
     // All brushes are children of the scene root
     for entity in ready.collider_entities.iter().copied() {
+        commands
+            .entity(entity)
+            .try_remove::<InSteamAudioMeshSpawnQueue>()
+            .try_remove::<SteamAudioStaticMesh>()
+            .try_remove::<SteamAudioInstancedMesh>();
         let scene_entity_name = names.get(entity).unwrap();
         if !brushes.contains(entity) {
             continue;

@@ -1,6 +1,6 @@
 use avian_steam_audio::AvianSteamAudioScenePlugin;
 use avian3d::PhysicsPlugins;
-use bevy::{color::palettes::tailwind, prelude::*};
+use bevy::{camera::Exposure, color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::prelude::*;
 use bevy_trenchbroom::prelude::*;
@@ -28,42 +28,65 @@ fn main() {
                             .smooth_by_default_angle()
                     }),
             ),
+            // The debug plugin displays the audio meshes with a different color for each material
             SteamAudioDebugPlugin,
             CameraControllerPlugin,
         ))
+        .insert_resource(
+            // The default settings already add some useful mappings, e.g. to make all textures that contain the name "wood" wooden materials.
+            // This resource is added for you, but we add it explicitly here to extend the default settings.
+            TrenchBroomSteamAudioSettings::default()
+                .map_material("*moss*", SteamAudioMaterial::CARPET),
+        )
         .add_systems(Startup, setup)
+        .add_observer(setup_loud_speaker)
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    assets: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup(mut commands: Commands, assets: Res<AssetServer>) {
     // The camera is our listener using SteamAudioListener
     commands.spawn((
         Camera3d::default(),
         SteamAudioListener,
         CameraController::default(),
+        Exposure::INDOOR,
     ));
 
-    // The sample player uses Steam Audio through the SteamAudioPool
-    // Let's place it to the front left of the listener, making direct sound come from the left
-    commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
-        SteamAudioPool,
-        Transform::from_xyz(-1.5, 0.0, -3.0),
-        Mesh3d(meshes.add(Sphere::new(0.2))),
-        MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
-    ));
-
-    // Some occluding geometry using MeshSteamAudioMaterial
-    // Let's place it to the right of the listener, making reflected sound come from the right
     commands.spawn(SceneRoot(assets.load("maps/trenchbroom_demo.map#Scene")));
+}
 
-    commands.spawn((
-        DirectionalLight::default(),
-        Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
-    ));
+#[point_class(base(Transform))]
+struct LoudSpeaker;
+
+fn setup_loud_speaker(
+    add: On<Add, LoudSpeaker>,
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands
+        .entity(add.entity)
+        .insert((
+            SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
+            SteamAudioPool,
+            sample_effects![SteamAudioNode {
+                direct_gain: 0.2,
+                reflection_gain: 0.7,
+                ..default()
+            }],
+            PointLight {
+                shadows_enabled: true,
+                ..default()
+            },
+        ))
+        .with_child((
+            Transform::default(),
+            Visibility::default(),
+            Mesh3d(meshes.add(Sphere::new(0.2))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                unlit: true,
+                ..StandardMaterial::from(Color::from(tailwind::GREEN_400))
+            })),
+        ));
 }
