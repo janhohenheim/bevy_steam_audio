@@ -104,7 +104,8 @@ fn handle_scene(
             .entity(entity)
             .try_remove::<InSteamAudioMeshSpawnQueue>()
             .try_remove::<SteamAudioStaticMesh>()
-            .try_remove::<SteamAudioInstancedMesh>();
+            .try_remove::<SteamAudioInstancedMesh>()
+            .try_remove::<SteamAudioMaterial>();
         let scene_entity_name = names.get(entity).unwrap();
         if !brushes.contains(entity) {
             continue;
@@ -120,7 +121,9 @@ fn handle_scene(
 
         for entity in potential_materials {
             let mat_entity_name = names.get(*entity).unwrap();
+            eprintln!("Entity: {mat_entity_name}");
             let Ok((mesh, material, transform)) = mesh_handles.get(*entity) else {
+                eprintln!("fock");
                 continue;
             };
             let Some(material_name) = material.0.path() else {
@@ -159,7 +162,7 @@ fn handle_scene(
                 root.add_static_mesh(audio_mesh.clone());
                 commands
                     .entity(*entity)
-                    .insert(SteamAudioStaticMesh(audio_mesh));
+                    .try_insert((SteamAudioStaticMesh(audio_mesh), material));
             } else {
                 let mut sub_scene = match audionimbus::Scene::try_new(
                     &STEAM_AUDIO_CONTEXT,
@@ -204,7 +207,7 @@ fn handle_scene(
                 root.add_instanced_mesh(instanced_mesh.clone());
                 commands
                     .entity(*entity)
-                    .try_insert(SteamAudioInstancedMesh(instanced_mesh));
+                    .try_insert((SteamAudioInstancedMesh(instanced_mesh), material));
             }
 
             #[cfg(feature = "debug")]
@@ -220,7 +223,7 @@ fn handle_scene(
                         continue;
                     }
                 };
-                commands.entity(*entity).insert(gizmo);
+                commands.entity(*entity).try_insert(gizmo);
             }
         }
     }

@@ -10,6 +10,7 @@ pub struct SteamAudioDebugPlugin;
 impl Plugin for SteamAudioDebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostUpdate, update_gizmos.in_set(SteamAudioSystems::Gizmos));
+        app.add_observer(remove_gizmo);
     }
 }
 
@@ -100,4 +101,10 @@ fn update_gizmos(
             gizmos.linestrip([a, b, c, a], color);
         }
     }
+}
+
+fn remove_gizmo(remove: On<Remove, SteamAudioMaterial>, mut commands: Commands) {
+    commands
+        .entity(remove.entity)
+        .try_remove::<SteamAudioGizmo>();
 }

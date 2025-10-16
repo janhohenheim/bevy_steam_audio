@@ -171,7 +171,7 @@ fn spawn_new_steam_audio_meshes(
                 }
             };
 
-            commands.entity(entity).insert(gizmo);
+            commands.entity(entity).try_insert(gizmo);
         }
     }
     // Do not call root.commit(), it's not safe while simulations are running

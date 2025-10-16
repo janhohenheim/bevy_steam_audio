@@ -165,6 +165,11 @@ fn spawn_new_steam_audio_meshes(
 ) -> Result {
     errors.clear();
     for (entity, name, collider, material, transform, is_static) in &queued {
+        if material.is_none() {
+            commands
+                .entity(entity)
+                .try_insert(SteamAudioMaterial::default());
+        }
         let material = material.copied().unwrap_or_default();
         if !is_static {
             let sub_scene = if let Some(sub_scene) = map.get(&ColliderKey::from(collider)) {
@@ -281,7 +286,7 @@ fn spawn_new_steam_audio_meshes(
                 vertices: mesh.vertices,
                 indices: mesh.indices,
             };
-            commands.entity(entity).insert(gizmo);
+            commands.entity(entity).try_insert(gizmo);
         }
         continue;
     }
