@@ -181,7 +181,7 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            let gizmo = SpawnSteamAudioGizmo {
+            let gizmo = SteamAudioGizmo {
                 vertices: vertices.into_iter().map(|v| Vec3::from_array(*v)).collect(),
                 indices: indices
                     .iter()

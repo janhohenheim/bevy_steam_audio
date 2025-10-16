@@ -17,7 +17,7 @@ pub mod settings;
 
 pub mod prelude {
     #[cfg(feature = "debug")]
-    pub(crate) use crate::debug::SpawnSteamAudioGizmo;
+    pub(crate) use crate::debug::SteamAudioGizmo;
     pub(crate) use crate::{STEAM_AUDIO_CONTEXT, SteamAudioSystems};
     pub(crate) use bevy_app::prelude::*;
     pub(crate) use bevy_asset::prelude::*;
@@ -74,6 +74,7 @@ impl Plugin for SteamAudioPlugin {
                 SteamAudioSystems::UpdateSources,
                 SteamAudioSystems::RunSimulator,
                 SteamAudioSystems::GenerateProbes,
+                SteamAudioSystems::Gizmos,
             )
                 .chain()
                 .after(TransformSystems::Propagate),
@@ -98,6 +99,7 @@ pub enum SteamAudioSystems {
     GenerateProbes,
     UpdateSources,
     RunSimulator,
+    Gizmos,
 }
 
 #[derive(Component, Reflect, Debug)]

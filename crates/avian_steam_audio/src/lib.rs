@@ -8,6 +8,7 @@ use bevy_app::prelude::*;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{entity_disabling::Disabled, prelude::*};
 use bevy_platform::collections::HashMap;
+use bevy_reflect::prelude::*;
 use bevy_steam_audio::{
     STEAM_AUDIO_CONTEXT, SteamAudioSystems,
     prelude::*,
@@ -31,8 +32,23 @@ pub mod prelude {
 
 pub struct AvianSteamAudioScenePlugin;
 
+#[derive(Resource, Debug, Eq, PartialEq, Reflect)]
+#[reflect(Resource)]
+pub struct AvianSteamAudioSceneSettings {
+    pub auto_insert_materials: bool,
+}
+
+impl Default for AvianSteamAudioSceneSettings {
+    fn default() -> Self {
+        Self {
+            auto_insert_materials: true,
+        }
+    }
+}
+
 impl Plugin for AvianSteamAudioScenePlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<AvianSteamAudioSceneSettings>();
         app.add_systems(
             PostUpdate,
             (
@@ -47,18 +63,34 @@ impl Plugin for AvianSteamAudioScenePlugin {
                 .chain()
                 .in_set(SteamAudioSystems::MeshLifecycle),
         );
-        app.add_observer(add_collider);
+        app.add_observer(add_collider)
+            .add_observer(remove_collider_of)
+            .add_observer(add_sensor);
         app.init_resource::<ShapeToScene>();
     }
 }
 
+fn remove_collider_of(remove: On<Remove, ColliderOf>, mut commands: Commands) {
+    commands
+        .entity(remove.entity)
+        .try_remove::<SteamAudioMaterial>();
+}
+
+fn add_sensor(add: On<Add, Sensor>, mut commands: Commands) {
+    commands
+        .entity(add.entity)
+        .try_remove::<SteamAudioMaterial>();
+}
+
 fn add_collider(
     add: On<Add, ColliderOf>,
-    sensors: Query<(), With<Sensor>>,
+    collider: Query<(Has<Sensor>, Has<SteamAudioMaterial>), Allow<Disabled>>,
     mut commands: Commands,
     rigid_body: Query<&RigidBody, Allow<Disabled>>,
+    settings: Res<AvianSteamAudioSceneSettings>,
 ) -> Result {
-    if sensors.contains(add.entity) {
+    let (has_sensor, has_material) = collider.get(add.entity)?;
+    if has_sensor {
         return Ok(());
     }
     let rigid_body = rigid_body.get(add.entity)?;
@@ -67,6 +99,11 @@ fn add_collider(
         .try_insert(InSteamAudioMeshSpawnQueue);
     if rigid_body.is_static() {
         commands.entity(add.entity).try_insert(Static);
+    }
+    if settings.auto_insert_materials && !has_material {
+        commands
+            .entity(add.entity)
+            .try_insert(SteamAudioMaterial::default());
     }
     Ok(())
 }
@@ -232,7 +269,7 @@ fn spawn_new_steam_audio_meshes(
             .try_remove::<InSteamAudioMeshSpawnQueue>();
         #[cfg(feature = "debug")]
         {
-            use bevy_steam_audio::debug::SpawnSteamAudioGizmo;
+            use bevy_steam_audio::debug::SteamAudioGizmo;
             let mesh = match collider.trimesh_builder().build() {
                 Ok(mesh) => mesh,
                 Err(err) => {
@@ -240,7 +277,7 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            let gizmo = SpawnSteamAudioGizmo {
+            let gizmo = SteamAudioGizmo {
                 vertices: mesh.vertices,
                 indices: mesh.indices,
             };
