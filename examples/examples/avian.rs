@@ -4,6 +4,10 @@ use bevy::{color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::prelude::*;
 
+use crate::util::prelude::*;
+
+mod util;
+
 fn main() {
     App::new()
         .add_plugins((
@@ -12,8 +16,9 @@ fn main() {
             PhysicsPlugins::default(),
             SteamAudioPlugin::default(),
             SteamAudioDebugPlugin,
-            // By using the `AvianSteamAudioScenePlugin`
+            // By using the `AvianSteamAudioScenePlugin`, all `Colliders` that belong to a `RigidBody` will be automatically treated as acoustic objects.
             AvianSteamAudioScenePlugin,
+            CameraControllerPlugin,
         ))
         .add_systems(Startup, setup)
         .run();
@@ -25,25 +30,46 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn((Camera3d::default(), SteamAudioListener));
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.5, 0.0).looking_at(Vec3::new(0.0, 0.2, -1.0), Vec3::Y),
+        SteamAudioListener,
+        CameraController::default(),
+    ));
 
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
-        Transform::from_xyz(-1.5, 0.0, -3.0),
+        Transform::from_xyz(0.0, 0.0, -3.0),
         Mesh3d(meshes.add(Sphere::new(0.2))),
         MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
     ));
 
+    let floor = Cuboid::new(4.0, 0.2, 4.0);
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
+        Mesh3d(meshes.add(floor)),
         MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
-        Transform::from_xyz(1.0, 0.0, 0.0),
-        SteamAudioMaterial::default(),
+        Transform::from_xyz(0.0, -0.5, -2.0),
         RigidBody::Static,
-        ColliderConstructor::TrimeshFromMesh,
+        Collider::from(floor),
     ));
 
+    let cube = Cuboid::new(0.3, 0.3, 0.3);
+    let mesh = meshes.add(cube);
+    let collider = Collider::from(cube);
+    for i in 0..4 {
+        for j in 0..4 {
+            commands.spawn((
+                Mesh3d(mesh.clone()),
+                //MeshMaterial3d(materials.add(Color::from(tailwind::SLATE_100))),
+                Transform::from_xyz(i as f32 * 0.31 - 0.7, j as f32 * 0.31, -2.0),
+                RigidBody::Dynamic,
+                collider.clone(),
+                // We can optionally use a specific material for each collider instead of the default material.
+                SteamAudioMaterial::WOOD,
+            ));
+        }
+    }
     commands.spawn((
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),

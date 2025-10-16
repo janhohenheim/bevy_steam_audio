@@ -54,9 +54,13 @@ impl Plugin for AvianSteamAudioScenePlugin {
 
 fn add_collider(
     add: On<Add, ColliderOf>,
+    sensors: Query<(), With<Sensor>>,
     mut commands: Commands,
     rigid_body: Query<&RigidBody, Allow<Disabled>>,
 ) -> Result {
+    if sensors.contains(add.entity) {
+        return Ok(());
+    }
     let rigid_body = rigid_body.get(add.entity)?;
     commands
         .entity(add.entity)

@@ -74,7 +74,6 @@ impl Plugin for SteamAudioPlugin {
                 SteamAudioSystems::UpdateSources,
                 SteamAudioSystems::RunSimulator,
                 SteamAudioSystems::GenerateProbes,
-                SteamAudioSystems::Gizmos,
             )
                 .chain()
                 .after(TransformSystems::Propagate),
@@ -99,7 +98,6 @@ pub enum SteamAudioSystems {
     GenerateProbes,
     UpdateSources,
     RunSimulator,
-    Gizmos,
 }
 
 #[derive(Component, Reflect, Debug)]

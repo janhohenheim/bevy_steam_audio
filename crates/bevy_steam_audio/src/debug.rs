@@ -9,10 +9,6 @@ pub struct SteamAudioDebugPlugin;
 impl Plugin for SteamAudioDebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_observer(init_gizmo);
-        app.add_systems(
-            PostUpdate,
-            spawn_gizmos.chain().in_set(SteamAudioSystems::Gizmos),
-        );
     }
 }
 
@@ -63,9 +59,7 @@ fn init_gizmo(
     let handle = gizmo_assets.add(gizmo);
     commands.entity(add.entity).try_insert(Gizmo {
         handle,
-        depth_bias: -0.0001,
+        depth_bias: -0.01,
         ..default()
     });
 }
-
-fn spawn_gizmos() {}
