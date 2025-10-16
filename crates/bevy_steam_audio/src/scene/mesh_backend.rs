@@ -164,25 +164,21 @@ fn spawn_new_steam_audio_meshes(
         #[cfg(feature = "debug")]
         {
             use itertools::Itertools as _;
-            let vertices = match mesh
+
+            let Some(vertices) = mesh
                 .attribute(Mesh::ATTRIBUTE_POSITION)
                 .and_then(|p| p.as_float3())
-            {
-                Some(positions) => positions,
-                None => {
-                    errors.push(format!("{name}: Mesh has no positions"));
-                    continue;
-                }
+            else {
+                errors.push(format!("{name}: Mesh has no positions"));
+                continue;
             };
-            let indices = match mesh.indices() {
-                Some(indices) => indices,
-                _ => {
-                    errors.push(format!("{name}: Mesh has no indices"));
-                    continue;
-                }
+
+            let Some(indices) = mesh.indices() else {
+                errors.push(format!("{name}: Mesh has no indices"));
+                continue;
             };
             let gizmo = SteamAudioGizmo {
-                vertices: vertices.into_iter().map(|v| Vec3::from_array(*v)).collect(),
+                vertices: vertices.iter().map(|v| Vec3::from_array(*v)).collect(),
                 indices: indices
                     .iter()
                     .chunks(3)
