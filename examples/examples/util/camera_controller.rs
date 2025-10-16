@@ -7,7 +7,10 @@
 //! Unlike other examples, which demonstrate an application, this demonstrates a plugin library.
 
 use bevy::{
-    input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit},
+    input::{
+        common_conditions::input_just_pressed,
+        mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit},
+    },
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
 };
@@ -18,7 +21,13 @@ pub struct CameraControllerPlugin;
 
 impl Plugin for CameraControllerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, run_camera_controller);
+        app.add_systems(Update, run_camera_controller).add_systems(
+            Update,
+            (|mut exit: MessageWriter<AppExit>| {
+                exit.write(AppExit::Success);
+            })
+            .run_if(input_just_pressed(KeyCode::Escape).or(input_just_pressed(KeyCode::Backspace))),
+        );
     }
 }
 

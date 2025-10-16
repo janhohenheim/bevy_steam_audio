@@ -11,6 +11,18 @@ impl Plugin for SteamAudioDebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostUpdate, update_gizmos.in_set(SteamAudioSystems::Gizmos));
         app.add_observer(remove_gizmo);
+        app.insert_gizmo_config(
+            SteamAudioGizmos,
+            GizmoConfig {
+                enabled: true,
+                line: GizmoLineConfig {
+                    width: 50.0,
+                    perspective: true,
+                    ..default()
+                },
+                ..default()
+            },
+        );
     }
 }
 
@@ -66,7 +78,7 @@ impl TryFrom<&Mesh> for SteamAudioGizmo {
 }
 
 fn update_gizmos(
-    mut gizmos: Gizmos,
+    mut gizmos: Gizmos<SteamAudioGizmos>,
     gizmo_handles: Query<
         (&GlobalTransform, &SteamAudioGizmo, &SteamAudioMaterial),
         Allow<Disabled>,
@@ -84,7 +96,7 @@ fn update_gizmos(
                 SteamAudioMaterial::CONCRETE => tailwind::ZINC_800,
                 SteamAudioMaterial::CERAMIC => tailwind::SKY_800,
                 SteamAudioMaterial::GRAVEL => tailwind::AMBER_900,
-                SteamAudioMaterial::CARPET => tailwind::RED_500,
+                SteamAudioMaterial::CARPET => tailwind::RED_700,
                 SteamAudioMaterial::GLASS => tailwind::SKY_100,
                 SteamAudioMaterial::PLASTER => tailwind::ROSE_100,
                 SteamAudioMaterial::WOOD => tailwind::YELLOW_950,
@@ -108,3 +120,6 @@ fn remove_gizmo(remove: On<Remove, SteamAudioMaterial>, mut commands: Commands) 
         .entity(remove.entity)
         .try_remove::<SteamAudioGizmo>();
 }
+
+#[derive(Reflect, Default, GizmoConfigGroup)]
+pub struct SteamAudioGizmos;
