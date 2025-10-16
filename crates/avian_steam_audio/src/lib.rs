@@ -47,8 +47,24 @@ impl Plugin for AvianSteamAudioScenePlugin {
                 .chain()
                 .in_set(SteamAudioSystems::MeshLifecycle),
         );
+        app.add_observer(add_collider);
         app.init_resource::<ShapeToScene>();
     }
+}
+
+fn add_collider(
+    add: On<Add, ColliderOf>,
+    mut commands: Commands,
+    rigid_body: Query<&RigidBody, Allow<Disabled>>,
+) -> Result {
+    let rigid_body = rigid_body.get(add.entity)?;
+    commands
+        .entity(add.entity)
+        .insert(InSteamAudioMeshSpawnQueue);
+    if rigid_body.is_static() {
+        commands.entity(add.entity).insert(Static);
+    }
+    Ok(())
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
@@ -95,17 +111,18 @@ fn spawn_new_steam_audio_meshes(
             Entity,
             NameOrEntity,
             &Collider,
-            &SteamAudioMaterial,
+            Option<&SteamAudioMaterial>,
             &GlobalTransform,
             Has<Static>,
         ),
-        (Allow<Disabled>, With<InSteamAudioMeshSpawnQueue>),
+        With<InSteamAudioMeshSpawnQueue>,
     >,
     mut root: ResMut<SteamAudioRootScene>,
     mut errors: Local<Vec<String>>,
 ) -> Result {
     errors.clear();
     for (entity, name, collider, material, transform, is_static) in &queued {
+        let material = material.copied().unwrap_or_default();
         if !is_static {
             let sub_scene = if let Some(sub_scene) = map.get(&ColliderKey::from(collider)) {
                 sub_scene.clone()
@@ -135,7 +152,7 @@ fn spawn_new_steam_audio_meshes(
                         continue;
                     }
                 };
-                let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, (*material).into()) {
+                let static_mesh = match mesh.to_steam_audio_mesh(&sub_scene, material.into()) {
                     Ok(mesh) => mesh,
                     Err(err) => {
                         errors.push(format!("{name}: Failed to convert mesh: {err}"));
@@ -188,7 +205,7 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            let static_mesh = match mesh.to_steam_audio_mesh(&root, (*material).into()) {
+            let static_mesh = match mesh.to_steam_audio_mesh(&root, material.into()) {
                 Ok(mesh) => mesh,
                 Err(err) => {
                     errors.push(format!("{name}: Failed to convert mesh: {err}"));

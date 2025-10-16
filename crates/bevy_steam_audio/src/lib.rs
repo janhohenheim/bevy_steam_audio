@@ -11,7 +11,6 @@ pub mod simulation;
 pub mod sources;
 pub mod wrapper;
 pub use audionimbus;
-
 pub mod settings;
 
 pub mod prelude {

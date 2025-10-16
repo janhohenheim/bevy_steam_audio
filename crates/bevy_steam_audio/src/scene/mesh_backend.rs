@@ -68,7 +68,7 @@ fn spawn_new_steam_audio_meshes(
             &GlobalTransform,
             Has<Static>,
         ),
-        (Allow<Disabled>, With<InSteamAudioMeshSpawnQueue>),
+        With<InSteamAudioMeshSpawnQueue>,
     >,
     meshes: Res<Assets<Mesh>>,
     mut root: ResMut<SteamAudioRootScene>,

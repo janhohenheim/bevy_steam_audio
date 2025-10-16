@@ -11,6 +11,7 @@ fn main() {
             SeedlingPlugin::default(),
             PhysicsPlugins::default(),
             SteamAudioPlugin::default(),
+            // By using the `AvianSteamAudioScenePlugin`
             AvianSteamAudioScenePlugin,
         ))
         .add_systems(Startup, setup)
