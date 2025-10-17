@@ -282,10 +282,7 @@ fn update_simulation(
                 transmission: Some(audionimbus::TransmissionParameters {
                     num_transmission_rays: 4,
                 }),
-                algorithm: audionimbus::OcclusionAlgorithm::Volumetric {
-                    radius: 1.0,
-                    num_occlusion_samples: quality.direct.max_num_occlusion_samples,
-                },
+                algorithm: audionimbus::OcclusionAlgorithm::Raycast,
             }),
         }),
         reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
@@ -324,7 +321,7 @@ fn update_simulation(
 
         let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
 
-        node.source_position = transform.translation;
+        node.source_position = orientation;
         node.listener_position = listener_orientation;
     }
 

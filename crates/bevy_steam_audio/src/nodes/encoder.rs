@@ -3,7 +3,7 @@ use crate::{
     nodes::FixedProcessBlock,
     prelude::*,
     settings::SteamAudioQuality,
-    wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
+    wrapper::{AudionimbusCoordinateSystem, ChannelPtrs, ToSteamAudioVec3 as _},
 };
 
 use audionimbus::AudioBuffer;
@@ -36,7 +36,7 @@ pub struct SteamAudioNode {
     pub previous_direct_gain: f32,
     pub previous_reflection_gain: f32,
     pub previous_pathing_gain: f32,
-    pub source_position: Vec3,
+    pub source_position: AudionimbusCoordinateSystem,
     pub listener_position: AudionimbusCoordinateSystem,
     pub pathing_available: bool,
 }
@@ -51,7 +51,7 @@ impl Default for SteamAudioNode {
             previous_direct_gain: 0.0,
             previous_reflection_gain: 0.0,
             previous_pathing_gain: 0.0,
-            source_position: Vec3::ZERO,
+            source_position: AudionimbusCoordinateSystem::default(),
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
         }
@@ -235,7 +235,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             Some(reflection_effect_params),
             Some(pathing_effect_params),
         ) = (
-            self.direct_effect_params.as_ref(),
+            self.direct_effect_params.as_mut(),
             self.reflection_effect_params.as_mut(),
             self.pathing_effect_params.as_mut(),
         )
@@ -341,17 +341,42 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .unwrap()
             };
 
+            direct_effect_params.directivity = Some(audionimbus::directivity_attenuation(
+                &STEAM_AUDIO_CONTEXT,
+                &source_position.to_audionimbus(),
+                &listener.origin.to_steam_audio_vec3(),
+                // Full omnidirectional
+                &audionimbus::Directivity::WeightedDipole {
+                    weight: 0.0,
+                    power: 0.0,
+                },
+            ));
+            direct_effect_params.occlusion = Some(0.8);
+            direct_effect_params.distance_attenuation = Some(audionimbus::distance_attenuation(
+                &STEAM_AUDIO_CONTEXT,
+                &source_position.origin.to_steam_audio_vec3(),
+                &listener.origin.to_steam_audio_vec3(),
+                &audionimbus::DistanceAttenuationModel::Default,
+            ));
+            direct_effect_params.air_absorption =
+                Some(audionimbus::Equalizer(audionimbus::air_absorption(
+                    &STEAM_AUDIO_CONTEXT,
+                    &source_position.origin.to_steam_audio_vec3(),
+                    &listener.origin.to_steam_audio_vec3(),
+                    &audionimbus::AirAbsorptionModel::Default,
+                )));
+
             let _effect_state = self.direct_effect.apply(
-                &direct_effect_params.clone(),
+                &direct_effect_params,
                 &input_sa_buffer,
                 &scratch_stereo_sa_buffer,
             );
 
             // Binaural Effect
-            let direction = if source_position.distance_squared(listener.origin) < 1e-5 {
+            let direction = if source_position.origin.distance_squared(listener.origin) < 1e-5 {
                 Vec3::NEG_Z
             } else {
-                source_position - listener.origin
+                source_position.origin - listener.origin
             };
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
             let binaural_params = audionimbus::BinauralEffectParams {
