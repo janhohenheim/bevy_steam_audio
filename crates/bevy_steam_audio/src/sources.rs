@@ -1,11 +1,15 @@
+use bevy_ecs::entity_disabling::Disabled;
+use bevy_seedling::sample::SamplePlayer;
+
 use crate::{SteamAudioSamplePlayer, prelude::*, simulation::AudionimbusSimulator};
 
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<ToSetup>();
+    app.init_resource::<ToSetup>().init_resource::<ToRemove>();
     app.add_observer(remove_source);
     app.add_systems(
         PostUpdate,
         (
+            drain_to_remove,
             queue_audionimbus_source_mutation,
             init_audionimbus_sources.run_if(resource_exists::<AudionimbusSimulator>),
         )
@@ -86,8 +90,39 @@ fn init_audionimbus_sources(
     }
 }
 
+fn remove_sample_player(remove: On<Remove, SamplePlayer>, mut commands: Commands) {
+    commands
+        .entity(remove.entity)
+        .try_remove::<SteamAudioSamplePlayer>();
+}
+
 fn remove_source(remove: On<Remove, SteamAudioSamplePlayer>, mut commands: Commands) {
     commands
         .entity(remove.entity)
         .try_remove::<AudionimbusSource>();
+}
+
+fn remove_steam_audio_source(
+    remove: On<Remove, AudionimbusSource>,
+    source: Query<&AudionimbusSource, Allow<Disabled>>,
+    mut to_remove: ResMut<ToRemove>,
+) -> Result {
+    let source = source.get(remove.entity)?;
+    to_remove.0.push(source.0.clone());
+    Ok(())
+}
+
+#[derive(Resource, Default, Deref, DerefMut)]
+struct ToRemove(Vec<audionimbus::Source>);
+
+fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: Res<AudionimbusSimulator>) {
+    if to_remove.is_empty() {
+        return;
+    }
+    let Ok(mut simulator) = simulator.try_write() else {
+        return;
+    };
+    for source in to_remove.0.drain(..) {
+        simulator.remove_source(&source);
+    }
 }
