@@ -38,7 +38,7 @@ pub mod prelude {
     #[cfg(feature = "debug")]
     pub use crate::debug::SteamAudioDebugPlugin;
     pub use crate::{
-        SteamAudioListener, SteamAudioPlugin, SteamAudioSamplePlayer,
+        SteamAudioListener, SteamAudioPlugin,
         nodes::{
             AmbisonicDecodeNode, SteamAudioNode, SteamAudioPool, SteamAudioReverbNode,
             SteamAudioReverbPool,
@@ -110,17 +110,3 @@ pub struct SteamAudioListener;
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
     audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap()
 });
-
-#[derive(Component)]
-#[require(Transform, GlobalTransform, SamplePlayer)]
-pub struct SteamAudioSamplePlayer {
-    pub flags: audionimbus::SimulationFlags,
-}
-
-impl Default for SteamAudioSamplePlayer {
-    fn default() -> Self {
-        Self {
-            flags: audionimbus::SimulationFlags::all(),
-        }
-    }
-}

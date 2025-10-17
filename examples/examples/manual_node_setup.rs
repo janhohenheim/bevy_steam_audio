@@ -11,8 +11,6 @@ fn main() {
             Mesh3dSteamAudioScenePlugin::default(),
         ))
         .add_systems(Startup, (spawn_custom_pool, setup))
-        // Make sure to require `SteamAudioSamplePlayer` or you won't be able to hear anything
-        .register_required_components::<MyOwnSteamAudioPool, SteamAudioSamplePlayer>()
         .run();
 }
 
