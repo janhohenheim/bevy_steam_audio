@@ -14,3 +14,13 @@ impl ToSteamAudioTransform for GlobalTransform {
         audionimbus::Matrix::new(row_major)
     }
 }
+
+pub trait ToSteamAudioVec3: Copy {
+    fn to_steam_audio_vec3(self) -> audionimbus::Vector3;
+}
+
+impl ToSteamAudioVec3 for Vec3 {
+    fn to_steam_audio_vec3(self) -> audionimbus::Vector3 {
+        audionimbus::Vector3::new(self.x, self.y, self.z)
+    }
+}
