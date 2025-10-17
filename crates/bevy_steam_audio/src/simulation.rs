@@ -16,7 +16,7 @@ use crate::{
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
     settings::{SteamAudioEnabled, SteamAudioHrtf, SteamAudioPathingSettings, SteamAudioQuality},
-    sources::{AudionimbusSource, ListenerSource},
+    sources::{AudionimbusSource, ListenerSource, SourcesToRemove},
 };
 
 use bevy_seedling::{
@@ -148,6 +148,8 @@ fn create_simulator(
         }
     }
     commands.insert_resource(SteamAudioHrtf(hrtf));
+    // All sources to be removed are already removed by despawning the old simulator
+    commands.insert_resource(SourcesToRemove::default());
 
     let mut simulator = audionimbus::Simulator::builder(
         audionimbus::SceneParams::Default,
