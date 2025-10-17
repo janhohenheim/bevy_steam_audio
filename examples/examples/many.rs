@@ -36,6 +36,6 @@ fn spawn(mut commands: Commands, step: Res<Step>) {
     commands.spawn((
         SamplePlayer::new(step.0.clone()),
         SteamAudioPool,
-        Transform::default(),
+        Transform::from_xyz(0.0, 0.0, -1.0),
     ));
 }
