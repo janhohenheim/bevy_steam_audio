@@ -5,7 +5,9 @@ use crate::{SteamAudioSamplePlayer, prelude::*, simulation::AudionimbusSimulator
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<ToSetup>().init_resource::<ToRemove>();
-    app.add_observer(remove_source);
+    app.add_observer(remove_source)
+        .add_observer(remove_sample_player)
+        .add_observer(remove_steam_audio_source);
     app.add_systems(
         PostUpdate,
         (
