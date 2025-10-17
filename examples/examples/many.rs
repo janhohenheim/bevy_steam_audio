@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::{color::palettes::tailwind, prelude::*, time::common_conditions::on_timer};
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
@@ -32,22 +32,8 @@ fn main() {
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup(mut commands: Commands) {
     commands.spawn((Camera3d::default(), SteamAudioListener));
-    // Weirdly, these audios are not playing direct sound? Set the reflections to true to hear more.
-    let reflections = false;
-    if reflections {
-        commands.spawn((
-            Mesh3d(meshes.add(Cuboid::new(0.1, 1.0, 3.0))),
-            MeshMaterial3d(materials.add(Color::from(tailwind::GRAY_600))),
-            Transform::from_xyz(1.0, 0.0, 0.0),
-            SteamAudioMaterial::default(),
-        ));
-    }
 }
 
 #[derive(Resource)]
@@ -61,34 +47,22 @@ impl FromWorld for Step {
     }
 }
 
-/// crash, plays direct audio intermittently
+/// crash
 fn bug_0(mut commands: Commands, step: Res<Step>) {
-    commands.spawn((
-        SamplePlayer::new(step.0.clone()),
-        SteamAudioPool,
-        Transform::from_xyz(0.0, 0.0, -1.0),
-    ));
+    commands.spawn((SamplePlayer::new(step.0.clone()), SteamAudioPool));
 }
 
-/// No crash, but also no direct audio
-fn bug_1(mut commands: Commands, step: Res<Step>, mut times: Local<u32>) {
+/// crash after a while
+fn bug_1(mut commands: Commands, step: Res<Step>) {
+    commands.spawn((SamplePlayer::new(step.0.clone()).looping(), SteamAudioPool));
+}
+
+/// No crash
+fn working(mut commands: Commands, step: Res<Step>, mut times: Local<u32>) {
     if *times >= 11 {
         // 1 = max samples (12) - 1 for the listener
         return;
     }
     *times += 1;
-    commands.spawn((
-        SamplePlayer::new(step.0.clone()).looping(),
-        SteamAudioPool,
-        Transform::from_xyz(0.0, 0.0, -1.0),
-    ));
-}
-
-/// crash after a while, plays direct audio intermittently
-fn bug_2(mut commands: Commands, step: Res<Step>) {
-    commands.spawn((
-        SamplePlayer::new(step.0.clone()).looping(),
-        SteamAudioPool,
-        Transform::from_xyz(0.0, 0.0, -1.0),
-    ));
+    commands.spawn((SamplePlayer::new(step.0.clone()).looping(), SteamAudioPool));
 }
