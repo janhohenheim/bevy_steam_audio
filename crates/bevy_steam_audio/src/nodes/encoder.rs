@@ -148,9 +148,7 @@ impl AudioNode for SteamAudioNode {
                 2,
                 2,
             ),
-            direct_effect_params: None,
-            reflection_effect_params: None,
-            pathing_effect_params: None,
+            source: None,
             quality: config.quality,
             hrtf,
             ambisonics_ptrs: ChannelPtrs::new(config.quality.num_channels() as usize),
@@ -172,9 +170,7 @@ struct SteamAudioProcessor {
     pathing_effect: audionimbus::PathEffect,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
     fixed_block: FixedProcessBlock,
-    direct_effect_params: Option<audionimbus::DirectEffectParams>,
-    reflection_effect_params: Option<audionimbus::ReflectionEffectParams>,
-    pathing_effect_params: Option<audionimbus::PathEffectParams>,
+    source: Option<audionimbus::Source>,
     // We might be able to use the scratch buffers for this, but
     // the ambisonic order may produce more channels than scratch
     // buffers.
@@ -195,24 +191,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             if let Some(patch) = SteamAudioNode::patch_event(&event) {
                 Patch::apply(&mut self.params, patch);
             }
-            if let Some(update) = event.downcast::<SimulationOutputEvent>() {
-                if self.direct_effect_params.is_none()
-                    || update.flags.contains(audionimbus::SimulationFlags::DIRECT)
-                {
-                    self.direct_effect_params = Some(update.outputs.direct().into_inner());
-                }
-                if self.reflection_effect_params.is_none()
-                    || update
-                        .flags
-                        .contains(audionimbus::SimulationFlags::REFLECTIONS)
-                {
-                    self.reflection_effect_params = Some(update.outputs.reflections().into_inner());
-                }
-                if self.pathing_effect_params.is_none()
-                    || update.flags.contains(audionimbus::SimulationFlags::PATHING)
-                {
-                    self.pathing_effect_params = Some(update.outputs.pathing().into_inner());
-                }
+            if let Some(source) = event.downcast::<audionimbus::Source>() {
+                self.source = Some(source);
             }
         }
 
@@ -222,16 +202,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             return ProcessStatus::ClearAllOutputs;
         }
 
-        let (
-            Some(direct_effect_params),
-            Some(reflection_effect_params),
-            Some(pathing_effect_params),
-        ) = (
-            self.direct_effect_params.as_mut(),
-            self.reflection_effect_params.as_mut(),
-            self.pathing_effect_params.as_mut(),
-        )
-        else {
+        let Some(mut source) = self.source.clone() else {
             // If this is encountered at any point other than just
             // after insertion into the graph, then something's gone
             // quite wrong. So, we'll clear the fixed buffers.
@@ -333,6 +304,10 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .unwrap()
             };
 
+            let mut direct_effect_params = source
+                .get_outputs(audionimbus::SimulationFlags::DIRECT)
+                .direct()
+                .into_inner();
             direct_effect_params.directivity = Some(audionimbus::directivity_attenuation(
                 &STEAM_AUDIO_CONTEXT,
                 &source_position.to_audionimbus(),
@@ -358,7 +333,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 )));
 
             let _effect_state = self.direct_effect.apply(
-                direct_effect_params,
+                &direct_effect_params,
                 &input_sa_buffer,
                 &scratch_stereo_sa_buffer,
             );
@@ -411,6 +386,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 settings,
             )
             .unwrap();
+
+            let mut reflection_effect_params = source
+                .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
+                .reflections()
+                .into_inner();
             reflection_effect_params.reflection_effect_type =
                 audionimbus::ReflectionEffectType::Convolution;
             reflection_effect_params.num_channels = self.quality.num_channels();
@@ -426,7 +406,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             self.params.previous_reflection_gain = self.params.reflection_gain;
 
             let _effect_state = self.reflection_effect.apply(
-                reflection_effect_params,
+                &reflection_effect_params,
                 &mono_reflect_sa_buffer,
                 &ambisonics_sa_buffer,
             );
@@ -448,6 +428,10 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             // Pathing effect
             if self.params.pathing_available {
+                let mut pathing_effect_params = source
+                    .get_outputs(audionimbus::SimulationFlags::PATHING)
+                    .pathing()
+                    .into_inner();
                 pathing_effect_params.order = self.quality.order;
                 pathing_effect_params.listener = listener.to_audionimbus();
                 pathing_effect_params.binaural = true;
@@ -463,7 +447,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 );
                 self.params.previous_pathing_gain = self.params.pathing_gain;
                 let _effect_state = self.pathing_effect.apply(
-                    pathing_effect_params,
+                    &pathing_effect_params,
                     &mono_pathing_sa_buffer,
                     &scratch_stereo_sa_buffer,
                 );
@@ -548,11 +532,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         let max_output_size = stream_info.max_block_frames.get() as usize;
         self.fixed_block.resize(fixed_block_size, max_output_size);
     }
-}
-
-pub(crate) struct SimulationOutputEvent {
-    pub(crate) flags: audionimbus::SimulationFlags,
-    pub(crate) outputs: audionimbus::SimulationOutputs,
 }
 
 fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
