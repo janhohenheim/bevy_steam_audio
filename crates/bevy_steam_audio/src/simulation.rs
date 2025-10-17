@@ -94,7 +94,7 @@ fn create_simulator_on_stream_restart(
 
 fn recreate_simulator_on_settings_change(
     quality: Res<SteamAudioQuality>,
-    simulator: Res<AudionimbusSimulator>,
+    simulator: ResMut<AudionimbusSimulator>,
     mut commands: Commands,
     mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
@@ -116,7 +116,7 @@ fn create_simulator(
     create: On<CreateSimulator>,
     mut commands: Commands,
     quality: Res<SteamAudioQuality>,
-    root: Res<SteamAudioRootScene>,
+    root: ResMut<SteamAudioRootScene>,
     sources: Query<&AudionimbusSource>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
     mut nodes: Query<&mut SteamAudioNodeConfig>,
@@ -216,7 +216,7 @@ fn create_simulator(
 
 /// Inspired by the Unity Steam Audio plugin.
 fn update_simulation(
-    simulator: Res<AudionimbusSimulator>,
+    simulator: ResMut<AudionimbusSimulator>,
     quality: Res<SteamAudioQuality>,
     mut enabled: ResMut<SteamAudioEnabled>,
     listener: Single<&GlobalTransform, With<SteamAudioListener>>,
