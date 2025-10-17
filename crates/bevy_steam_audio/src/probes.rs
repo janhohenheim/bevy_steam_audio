@@ -93,7 +93,6 @@ fn generate_probes(
         simulator.remove_probe_batch(old_batch);
     }
     simulator.add_probe_batch(&batch);
-    // Not strictly needed here, but if we happen to have a write lock anyways, let's put it to use :)
     simulator.commit();
 
     commands.insert_resource(SteamAudioProbeBatch(batch));
