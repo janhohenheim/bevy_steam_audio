@@ -41,7 +41,7 @@ fn setup(
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
         Transform::from_xyz(0.0, 0.0, -3.0),
-        Mesh3d(meshes.add(sphere.clone())),
+        Mesh3d(meshes.add(sphere)),
         MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400))),
         // The source doesn't need to be a rigid body or have a collider, but let's add some so the
         // cubes don't fall through it. Since we don't want to trap the sound inside the ball, let's
