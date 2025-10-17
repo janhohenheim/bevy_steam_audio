@@ -21,6 +21,7 @@ bevy_mesh = { workspace = true }
 bevy_asset = { workspace = true }
 bevy_transform = { workspace = true }
 bevy_steam_audio = { workspace = true }
+avian_steam_audio = { workspace = true }
 bevy_trenchbroom = { workspace = true }
 wildmatch = { workspace = true }
 avian3d = { workspace = true }
