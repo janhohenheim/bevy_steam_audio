@@ -348,7 +348,11 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             );
 
             // Binaural Effect
-            let direction = source_position - listener.origin;
+            let direction = if source_position.distance_squared(listener.origin) < 1e-5 {
+                Vec3::NEG_Z
+            } else {
+                source_position - listener.origin
+            };
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
             let binaural_params = audionimbus::BinauralEffectParams {
                 direction,
