@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, wrapper::ToSteamAudioVec3 as _};
 use firewheel::diff::{Diff, Patch, RealtimeClone};
 
 pub(super) fn plugin(app: &mut App) {
@@ -29,14 +29,11 @@ impl AudionimbusCoordinateSystem {
     }
 
     pub fn to_audionimbus(self) -> audionimbus::CoordinateSystem {
-        fn vec3_to_vector3(vec3: Vec3) -> audionimbus::Vector3 {
-            audionimbus::Vector3::new(vec3.x, vec3.y, vec3.z)
-        }
         audionimbus::CoordinateSystem {
-            right: vec3_to_vector3(self.right),
-            up: vec3_to_vector3(self.up),
-            ahead: vec3_to_vector3(self.ahead),
-            origin: vec3_to_vector3(self.origin),
+            right: self.right.to_steam_audio_vec3(),
+            up: self.up.to_steam_audio_vec3(),
+            ahead: self.ahead.to_steam_audio_vec3(),
+            origin: self.origin.to_steam_audio_vec3(),
         }
     }
 }

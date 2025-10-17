@@ -41,15 +41,19 @@ fn setup(
         Transform::from_xyz(18.0, 12.0, 0.0).looking_at(audio_pos.translation, Vec3::Y),
         SteamAudioListener,
     ));
-    commands.spawn((
-        SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
-        SteamAudioPool,
-        sample_effects![SteamAudioNode { ..default() }],
-        audio_pos,
-        Mesh3d(meshes.add(Sphere::new(0.5))),
-        MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400).with_alpha(0.5))),
-        PointLight::default(),
-    ));
+    commands
+        .spawn((
+            SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
+            SteamAudioPool,
+            sample_effects![SteamAudioNode { ..default() }],
+            audio_pos,
+            PointLight::default(),
+        ))
+        .with_child((
+            Visibility::default(),
+            Mesh3d(meshes.add(Sphere::new(0.5))),
+            MeshMaterial3d(materials.add(Color::from(tailwind::GREEN_400).with_alpha(0.5))),
+        ));
     commands.spawn((
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, 0.3), Vec3::Y),
