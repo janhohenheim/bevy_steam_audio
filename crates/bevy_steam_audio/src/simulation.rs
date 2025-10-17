@@ -9,7 +9,7 @@ use std::{
 use crate::{
     STEAM_AUDIO_CONTEXT, SteamAudioListener,
     nodes::{
-        SimulationOutputEvent, SteamAudioNodeConfig, SteamAudioReverbNodeConfig,
+        ProcessorSourceUpdate, SteamAudioNodeConfig, SteamAudioReverbNodeConfig,
         encoder::SteamAudioNode, reverb::SteamAudioReverbNode,
     },
     prelude::*,
@@ -347,10 +347,7 @@ fn update_simulation(
         let simulation_outputs = source.get_outputs(audionimbus::SimulationFlags::DIRECT);
 
         let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(SimulationOutputEvent {
-            flags: audionimbus::SimulationFlags::DIRECT,
-            outputs: simulation_outputs,
-        }));
+        events.push(NodeEventType::custom(ProcessorSourceUpdate(source.clone())));
     }
 
     let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
@@ -379,10 +376,7 @@ fn update_simulation(
         let simulation_outputs = source.get_outputs(flags);
 
         let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(SimulationOutputEvent {
-            flags,
-            outputs: simulation_outputs,
-        }));
+        events.push(NodeEventType::custom(ProcessorSourceUpdate(source.clone())));
     }
 
     let params: audionimbus::ReflectionEffectParams = listener_source
