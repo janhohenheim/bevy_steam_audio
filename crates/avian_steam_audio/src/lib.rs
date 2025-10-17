@@ -27,7 +27,7 @@ use crate::trimesh_builder::Trimesh;
 mod trimesh_builder;
 
 pub mod prelude {
-    pub use crate::AvianSteamAudioScenePlugin;
+    pub use crate::{AvianSteamAudioScenePlugin, NotSteamAudioCollider};
 }
 
 pub struct AvianSteamAudioScenePlugin;
@@ -65,7 +65,8 @@ impl Plugin for AvianSteamAudioScenePlugin {
         );
         app.add_observer(add_collider)
             .add_observer(remove_collider_of)
-            .add_observer(add_sensor);
+            .add_observer(add_sensor)
+            .add_observer(add_not_steam_audio);
         app.init_resource::<ShapeToScene>();
     }
 }
@@ -82,15 +83,28 @@ fn add_sensor(add: On<Add, Sensor>, mut commands: Commands) {
         .try_remove::<SteamAudioMaterial>();
 }
 
+fn add_not_steam_audio(add: On<Add, NotSteamAudioCollider>, mut commands: Commands) {
+    commands
+        .entity(add.entity)
+        .try_remove::<SteamAudioMaterial>();
+}
+
 fn add_collider(
     add: On<Add, ColliderOf>,
-    collider: Query<(Has<Sensor>, Has<SteamAudioMaterial>), Allow<Disabled>>,
+    collider: Query<
+        (
+            Has<Sensor>,
+            Has<NotSteamAudioCollider>,
+            Has<SteamAudioMaterial>,
+        ),
+        Allow<Disabled>,
+    >,
     mut commands: Commands,
     rigid_body: Query<&RigidBody, Allow<Disabled>>,
     settings: Res<AvianSteamAudioSettings>,
 ) -> Result {
-    let (has_sensor, has_material) = collider.get(add.entity)?;
-    if has_sensor {
+    let (has_sensor, not_steam_audio_collider, has_material) = collider.get(add.entity)?;
+    if has_sensor || not_steam_audio_collider {
         return Ok(());
     }
     let rigid_body = rigid_body.get(add.entity)?;
@@ -336,3 +350,7 @@ impl ToSteamAudioMesh for Trimesh {
         audionimbus::StaticMesh::try_new(scene, &settings).map_err(Into::into)
     }
 }
+
+#[derive(Component, Debug, Reflect)]
+#[reflect(Component)]
+pub struct NotSteamAudioCollider;
