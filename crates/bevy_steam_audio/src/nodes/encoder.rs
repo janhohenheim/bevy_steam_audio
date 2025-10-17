@@ -96,14 +96,7 @@ impl AudioNode for SteamAudioNode {
         let hrtf = config.hrtf.clone().expect("Created an `AudioNode` before the audio stream was ready. Please wait until `SteamAudioReady` is triggered.");
         SteamAudioProcessor {
             params: self.clone(),
-            ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect::try_new(
-                &STEAM_AUDIO_CONTEXT,
-                &settings,
-                &audionimbus::AmbisonicsEncodeEffectSettings {
-                    max_order: config.quality.order,
-                },
-            )
-            .unwrap(),
+
             direct_effect: audionimbus::DirectEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
@@ -173,7 +166,6 @@ impl AudioNode for SteamAudioNode {
 struct SteamAudioProcessor {
     quality: SteamAudioQuality,
     params: SteamAudioNode,
-    ambisonics_encode_effect: audionimbus::AmbisonicsEncodeEffect,
     direct_effect: audionimbus::DirectEffect,
     reflection_effect: audionimbus::ReflectionEffect,
     binaural_effect: audionimbus::BinauralEffect,
@@ -351,7 +343,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                     power: 0.0,
                 },
             ));
-            direct_effect_params.occlusion = Some(0.8);
+            direct_effect_params.occlusion = Some(0.3);
             direct_effect_params.distance_attenuation = Some(audionimbus::distance_attenuation(
                 &STEAM_AUDIO_CONTEXT,
                 &source_position.origin.to_steam_audio_vec3(),
@@ -376,7 +368,14 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let direction = if source_position.origin.distance_squared(listener.origin) < 1e-5 {
                 Vec3::NEG_Z
             } else {
-                source_position.origin - listener.origin
+                let world_direction = (source_position.origin - listener.origin).normalize();
+
+                // Transform world-space direction into listener's local space
+                Vec3::new(
+                    world_direction.dot(listener.right),
+                    world_direction.dot(listener.up),
+                    world_direction.dot(listener.ahead),
+                )
             };
             let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
             let binaural_params = audionimbus::BinauralEffectParams {
@@ -459,7 +458,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 apply_volume_ramp(
                     self.params.previous_pathing_gain,
                     self.params.pathing_gain,
-                    &mut [scratch_mono_reflect],
+                    &mut [scratch_mono_pathing],
                 );
                 self.params.previous_pathing_gain = self.params.pathing_gain;
                 let _effect_state = self.pathing_effect.apply(
@@ -499,14 +498,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             frame_size: self.fixed_block.frame_size() as u32,
         };
 
-        self.ambisonics_encode_effect = audionimbus::AmbisonicsEncodeEffect::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &settings,
-            &audionimbus::AmbisonicsEncodeEffectSettings {
-                max_order: self.quality.order,
-            },
-        )
-        .unwrap();
         self.direct_effect = audionimbus::DirectEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
             &settings,
