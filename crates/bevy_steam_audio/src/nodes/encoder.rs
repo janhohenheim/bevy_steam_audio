@@ -358,7 +358,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 )));
 
             let _effect_state = self.direct_effect.apply(
-                &direct_effect_params,
+                direct_effect_params,
                 &input_sa_buffer,
                 &scratch_stereo_sa_buffer,
             );
