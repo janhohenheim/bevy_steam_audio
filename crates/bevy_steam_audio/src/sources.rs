@@ -44,18 +44,23 @@ fn queue_audionimbus_source_mutation(
 fn init_audionimbus_sources(
     mut commands: Commands,
     mut to_setup: ResMut<ToSetup>,
-    simulator: Res<AudionimbusSimulator>,
+    simulator: ResMut<AudionimbusSimulator>,
     settings: Query<&SteamAudioSamplePlayer>,
     mut errors: Local<Vec<String>>,
     names: Query<NameOrEntity>,
     mut to_retry: Local<Vec<Entity>>,
 ) -> Result {
     errors.clear();
+    if to_setup.is_empty() {
+        return Ok(());
+    }
+    let Ok(simulator) = simulator.try_read() else {
+        return Ok(());
+    };
     for entity in to_setup.drain(..) {
-        let Ok(simulator) = simulator.try_read() else {
-            to_retry.push(entity);
+        if commands.get_entity(entity).is_err() {
             continue;
-        };
+        }
         let name = names.get(entity).unwrap();
         let settings = match settings.get(entity) {
             Ok(settings) => settings,
@@ -117,7 +122,7 @@ fn remove_steam_audio_source(
 #[derive(Resource, Default, Deref, DerefMut)]
 struct ToRemove(Vec<audionimbus::Source>);
 
-fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: Res<AudionimbusSimulator>) {
+fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: ResMut<AudionimbusSimulator>) {
     if to_remove.is_empty() {
         return;
     }

@@ -40,9 +40,9 @@ pub struct SteamAudioProbeBatch(pub audionimbus::ProbeBatch);
 fn generate_probes(
     mut generate_probes: ResMut<Messages<GenerateProbes>>,
     aabbs: Query<&Aabb>,
-    root: Res<SteamAudioRootScene>,
+    root: ResMut<SteamAudioRootScene>,
     mut commands: Commands,
-    simulator: Res<AudionimbusSimulator>,
+    simulator: ResMut<AudionimbusSimulator>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
 ) -> Result {
     let mut global_aabb = None;
