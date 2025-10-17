@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use std::sync::LazyLock;
 
-use bevy_seedling::sample::SamplePlayer;
 use prelude::*;
 
 pub mod nodes;

@@ -1,5 +1,5 @@
 use bevy_ecs::entity_disabling::Disabled;
-use bevy_seedling::{pool::SamplerPool, prelude::EffectOf, sample::SamplePlayer};
+use bevy_seedling::prelude::EffectOf;
 
 use crate::{prelude::*, simulation::AudionimbusSimulator};
 
