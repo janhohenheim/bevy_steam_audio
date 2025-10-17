@@ -191,8 +191,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             if let Some(patch) = SteamAudioNode::patch_event(&event) {
                 Patch::apply(&mut self.params, patch);
             }
-            if let Some(update) = event.downcast::<ProcessorSourceUpdate>() {
-                self.source = Some(update.0);
+            if let Some(source) = event.downcast::<audionimbus::Source>() {
+                self.source = Some(source);
             }
         }
 
@@ -533,9 +533,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         self.fixed_block.resize(fixed_block_size, max_output_size);
     }
 }
-
-#[derive(Debug, Deref, DerefMut)]
-pub(crate) struct ProcessorSourceUpdate(pub(crate) audionimbus::Source);
 
 fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
     for channel in buffer {
