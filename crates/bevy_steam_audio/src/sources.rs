@@ -100,6 +100,7 @@ fn remove_steam_audio_source(
 #[derive(Resource, Default, Deref, DerefMut)]
 struct ToRemove(Vec<audionimbus::Source>);
 
+#[expect(unused_variables, unused_mut, reason = "Needs to be fixed")]
 fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: ResMut<AudionimbusSimulator>) {
     if to_remove.is_empty() {
         return;
@@ -109,6 +110,7 @@ fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: ResMut<Audionimbu
         return;
     };
     for source in to_remove.0.drain(..) {
-        simulator.remove_source(&source);
+        // FIXME: Commenting this out leaks memory, but uncommenting it crashes when removing a source
+        // simulator.remove_source(&source);
     }
 }
