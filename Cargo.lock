@@ -5793,6 +5793,7 @@ name = "trenchbroom_steam_audio"
 version = "0.1.0"
 dependencies = [
  "avian3d",
+ "avian_steam_audio",
  "bevy_app",
  "bevy_asset",
  "bevy_ecs",

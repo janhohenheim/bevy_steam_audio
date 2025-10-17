@@ -1,3 +1,4 @@
+use avian_steam_audio::NotSteamAudioCollider;
 use avian3d::prelude::RigidBody;
 use bevy_app::prelude::*;
 use bevy_asset::prelude::*;
@@ -104,7 +105,8 @@ fn handle_scene(
             .try_remove::<InSteamAudioMeshSpawnQueue>()
             .try_remove::<SteamAudioStaticMesh>()
             .try_remove::<SteamAudioInstancedMesh>()
-            .try_remove::<SteamAudioMaterial>();
+            .try_remove::<SteamAudioMaterial>()
+            .try_insert(NotSteamAudioCollider);
         let scene_entity_name = names.get(entity).unwrap();
         if !brushes.contains(entity) {
             continue;
