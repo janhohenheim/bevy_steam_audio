@@ -135,7 +135,7 @@ allow_attributes_without_reason = "warn"
 [patch.crates-io]
 firewheel = { git = "https://github.com/BillyDM/firewheel" }
 bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0" }
-bevy_trenchbroom = { git = "https://github.com/Noxmore/bevy_trenchbroom", branch = "bevy-0.17" }
+bevy_trenchbroom = { git = "https://github.com/Noxmore/bevy_trenchbroom" }
 
 [profile.dev.package."*"]
 inherits = "dev"
