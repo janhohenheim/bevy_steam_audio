@@ -328,9 +328,9 @@ dependencies = [
 
 [[package]]
 name = "audionimbus"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c8b9a1987b742c204eefd1f16aa902de99e7a3895d8de3b1a0c6945022d8285"
+checksum = "fd02b6e65519ea7de7d95cb3aa2d585849dd25140c901759c58c44a9bc1e547e"
 dependencies = [
  "audionimbus-sys",
  "bitflags 2.9.4",
@@ -413,7 +413,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "hashbrown 0.16.0",
- "ordered-float",
+ "ordered-float 5.1.0",
  "thiserror 2.0.17",
 ]
 
@@ -1580,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "bevy_trenchbroom"
 version = "0.10.0"
-source = "git+https://github.com/Noxmore/bevy_trenchbroom?branch=bevy-0.17#c93b151593935bc3cf513f6f7ba9b2435262b568"
+source = "git+https://github.com/Noxmore/bevy_trenchbroom#eddf3dba140baf77f262f49440bafb3783983fec"
 dependencies = [
  "anyhow",
  "atomicow",
@@ -1611,7 +1611,7 @@ dependencies = [
 [[package]]
 name = "bevy_trenchbroom_macros"
 version = "0.10.0"
-source = "git+https://github.com/Noxmore/bevy_trenchbroom?branch=bevy-0.17#c93b151593935bc3cf513f6f7ba9b2435262b568"
+source = "git+https://github.com/Noxmore/bevy_trenchbroom#eddf3dba140baf77f262f49440bafb3783983fec"
 dependencies = [
  "deluxe",
  "heck 0.5.0",
@@ -1944,9 +1944,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fd1289c04a9ea8cb22300a459a72a385d7c73d3259e2ed7dcb2af674838cfa9"
+checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "cfg_aliases"
@@ -2686,7 +2686,7 @@ checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 [[package]]
 name = "firewheel"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "firewheel-core",
  "firewheel-cpal",
@@ -2699,7 +2699,7 @@ dependencies = [
 [[package]]
 name = "firewheel-core"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "arrayvec",
  "bevy_ecs",
@@ -2724,7 +2724,7 @@ dependencies = [
 [[package]]
 name = "firewheel-cpal"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "bevy_platform",
  "cpal",
@@ -2740,7 +2740,7 @@ dependencies = [
 [[package]]
 name = "firewheel-graph"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "arrayvec",
  "bevy_platform",
@@ -2756,7 +2756,7 @@ dependencies = [
 [[package]]
 name = "firewheel-macros"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -2768,7 +2768,7 @@ dependencies = [
 [[package]]
 name = "firewheel-nodes"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "bevy_ecs",
  "bevy_platform",
@@ -2781,7 +2781,7 @@ dependencies = [
 [[package]]
 name = "firewheel-pool"
 version = "0.8.0-rc.1"
-source = "git+https://github.com/BillyDM/firewheel#eed6abcef1cfbcb572a0605e732094afda9922b2"
+source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
 dependencies = [
  "firewheel-core",
  "firewheel-graph",
@@ -2938,25 +2938,25 @@ dependencies = [
 
 [[package]]
 name = "gethostname"
-version = "1.0.2"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc257fdb4038301ce4b9cd1b3b51704509692bb3ff716a410cbd07925d9dae55"
+checksum = "1bd49230192a3797a9a4d6abe9b3eed6f7fa4c8a8a4947977c6f80025f92cbd8"
 dependencies = [
  "rustix 1.1.2",
- "windows-targets 0.52.6",
+ "windows-link 0.2.1",
 ]
 
 [[package]]
 name = "getrandom"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26145e563e54f2cadc477553f1ec5ee650b00862f0a58bcd12cbdc5f0ea2d2f4"
+checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
  "js-sys",
  "libc",
  "r-efi",
- "wasi",
+ "wasip2",
  "wasm-bindgen",
 ]
 
@@ -3250,9 +3250,9 @@ dependencies = [
 
 [[package]]
 name = "half"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e54c115d4f30f52c67202f079c5f9d8b49db4691f460fdb0b4c2e838261b2ba5"
+checksum = "6ea2d84b969582b4b1864a92dc5d27cd2b77b622a8d79306834f1be5ba20d84b"
 dependencies = [
  "cfg-if",
  "crunchy",
@@ -3365,9 +3365,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.11.4"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
+checksum = "6717a8d2a5a929a1a2eb43a12812498ed141a0bcfb7e8f7844fbdbe4303bba9f"
 dependencies = [
  "equivalent",
  "hashbrown 0.16.0",
@@ -4279,9 +4279,18 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "5.0.0"
+version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c1f9f56e534ac6a9b8a4600bdf0f530fb393b5f393e7b4d03489c3cf0c3f01"
+checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "ordered-float"
+version = "5.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f4779c6901a562440c3786d08192c6fbda7c1c2060edd10006b05ee35d10f2d"
 dependencies = [
  "num-traits",
 ]
@@ -4326,9 +4335,9 @@ dependencies = [
 
 [[package]]
 name = "parry3d"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f02d098003d45982f41f9884941438e7e90eadf5e542389e7188e5b404d5ab"
+checksum = "017be73f24c8ca8b10f9727616e5cb9af82b98488cc6d5eea468e727ffa780ca"
 dependencies = [
  "approx",
  "arrayvec",
@@ -4342,7 +4351,7 @@ dependencies = [
  "nalgebra",
  "num-derive",
  "num-traits",
- "ordered-float",
+ "ordered-float 5.1.0",
  "rayon",
  "rstar",
  "simba",
@@ -4355,9 +4364,9 @@ dependencies = [
 
 [[package]]
 name = "parry3d-f64"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "003e47e8173eb6fca6427a14e29f835b5aacfa5ba89bc5632641cf4748985e7c"
+checksum = "37165b1c4e8969f9013d6c21825fb80529aba893d455386d3ce78c9593babf8e"
 dependencies = [
  "approx",
  "arrayvec",
@@ -4371,7 +4380,7 @@ dependencies = [
  "nalgebra",
  "num-derive",
  "num-traits",
- "ordered-float",
+ "ordered-float 5.1.0",
  "rayon",
  "rstar",
  "simba",
@@ -5468,9 +5477,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.106"
+version = "2.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ede7c438028d4436d71104916910f5bb611972c5cfd7f89b8300a8186e6fada6"
+checksum = "2a26dbd934e5451d21ef060c018dae56fc073894c5a7896f882928a76e6d081b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5968,15 +5977,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi"
-version = "0.14.7+wasi-0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "883478de20367e224c0090af9cf5f9fa85bed63a95c1abf3afc5c083ebc06e8c"
-dependencies = [
- "wasip2",
-]
-
-[[package]]
 name = "wasip2"
 version = "1.0.1+wasi-0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6301,7 +6301,7 @@ dependencies = [
  "naga",
  "ndk-sys",
  "objc",
- "ordered-float",
+ "ordered-float 4.6.0",
  "parking_lot",
  "portable-atomic",
  "portable-atomic-util",

@@ -139,8 +139,7 @@ fn drain_to_remove(
     if to_remove.is_empty() {
         return;
     }
-    // Todo: make this `read` once <https://github.com/MaxenceMaire/audionimbus/pull/30> is released
-    let Ok(mut simulator) = simulator.try_write() else {
+    let Ok(simulator) = simulator.try_read() else {
         return;
     };
     for source in to_remove.0.drain(..) {

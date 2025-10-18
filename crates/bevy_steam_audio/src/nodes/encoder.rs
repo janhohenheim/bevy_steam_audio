@@ -310,8 +310,8 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .into_inner();
             direct_effect_params.directivity = Some(audionimbus::directivity_attenuation(
                 &STEAM_AUDIO_CONTEXT,
-                &source_position.to_audionimbus(),
-                &listener.origin.to_steam_audio_vec3(),
+                source_position.to_audionimbus(),
+                listener.origin.to_steam_audio_vec3(),
                 // Full omnidirectional
                 &audionimbus::Directivity::WeightedDipole {
                     weight: 0.0,
@@ -320,17 +320,16 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             ));
             direct_effect_params.distance_attenuation = Some(audionimbus::distance_attenuation(
                 &STEAM_AUDIO_CONTEXT,
-                &source_position.origin.to_steam_audio_vec3(),
-                &listener.origin.to_steam_audio_vec3(),
+                source_position.origin.to_steam_audio_vec3(),
+                listener.origin.to_steam_audio_vec3(),
                 &audionimbus::DistanceAttenuationModel::Default,
             ));
-            direct_effect_params.air_absorption =
-                Some(audionimbus::Equalizer(audionimbus::air_absorption(
-                    &STEAM_AUDIO_CONTEXT,
-                    &source_position.origin.to_steam_audio_vec3(),
-                    &listener.origin.to_steam_audio_vec3(),
-                    &audionimbus::AirAbsorptionModel::Default,
-                )));
+            direct_effect_params.air_absorption = Some(audionimbus::air_absorption(
+                &STEAM_AUDIO_CONTEXT,
+                &source_position.origin.to_steam_audio_vec3(),
+                &listener.origin.to_steam_audio_vec3(),
+                &audionimbus::AirAbsorptionModel::Default,
+            ));
 
             let _effect_state = self.direct_effect.apply(
                 &direct_effect_params,
