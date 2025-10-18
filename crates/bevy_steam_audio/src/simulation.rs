@@ -23,7 +23,6 @@ use bevy_seedling::{
     context::{StreamRestartEvent, StreamStartEvent},
     prelude::*,
 };
-use firewheel::{diff::EventQueue, event::NodeEventType};
 
 use crate::wrapper::*;
 
@@ -224,8 +223,8 @@ fn update_simulation(
     synchro: ResMut<AsyncSimulationSynchronization>,
     mut root: ResMut<SteamAudioRootScene>,
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
-    mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    reverb_node: Single<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
+    mut ambisonic_node: Query<&mut SteamAudioNode>,
+    mut reverb_node: Single<&mut SteamAudioReverbNode, Without<EffectOf>>,
 
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
@@ -297,7 +296,6 @@ fn update_simulation(
         }),
     };
 
-    let (mut reverb_node, mut reverb_events) = reverb_node.into_inner();
     // set inputs
     for (mut source, transform, effects) in nodes.iter_mut() {
         let transform = transform.compute_transform();
@@ -308,8 +306,7 @@ fn update_simulation(
             source_inputs(orientation),
         );
 
-        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
-
+        let mut node = ambisonic_node.get_effect_mut(effects)?;
         node.source_position = orientation;
         node.listener_position = listener_orientation;
     }
@@ -324,12 +321,6 @@ fn update_simulation(
     simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
 
     simulator.run_direct();
-
-    // read outputs
-    for (source, _transform, effects) in nodes.iter_mut() {
-        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(source.clone()));
-    }
 
     let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
         // User doesn't want any reflection or pathing simulation
@@ -346,16 +337,6 @@ fn update_simulation(
     }
 
     // The previous simulation is complete, so we can start the next one
-
-    for (source, _transform, effects) in nodes.iter_mut() {
-        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(source.clone()));
-    }
-
-    {
-        let listener_source: audionimbus::Source = listener_source.clone();
-        reverb_events.push(NodeEventType::custom(listener_source));
-    }
 
     // set new inputs
     simulator.set_shared_inputs(
@@ -376,7 +357,7 @@ fn update_simulation(
             audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
             source_inputs(orientation),
         );
-        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
+        let mut node = ambisonic_node.get_effect_mut(effects)?;
         node.pathing_available = probes.is_some();
     }
 
