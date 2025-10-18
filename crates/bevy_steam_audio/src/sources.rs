@@ -1,5 +1,9 @@
 use bevy_ecs::entity_disabling::Disabled;
-use bevy_seedling::prelude::EffectOf;
+use bevy_seedling::{
+    node::follower::FollowerOf,
+    prelude::{AudioEvents, EffectOf, EffectsQuery, SampleEffects},
+};
+use firewheel::{diff::EventQueue as _, event::NodeEventType};
 
 use crate::{prelude::*, simulation::AudionimbusSimulator};
 
@@ -7,10 +11,12 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<ToSetup>()
         .init_resource::<SourcesToRemove>();
     app.add_observer(remove_steam_audio_source)
-        .add_observer(queue_audionimbus_source_init);
+        .add_observer(queue_audionimbus_source_init)
+        .add_observer(send_source_to_processor);
     app.add_systems(
         PostUpdate,
         (
+            send_source_to_reverb_processor,
             drain_to_remove,
             init_audionimbus_sources.run_if(resource_exists::<AudionimbusSimulator>),
         )
@@ -26,15 +32,40 @@ pub struct ListenerSource(pub(crate) audionimbus::Source);
 #[require(Transform, GlobalTransform)]
 pub struct AudionimbusSource(pub(crate) audionimbus::Source);
 
+fn send_source_to_processor(
+    add: On<Add, AudionimbusSource>,
+    effects: Query<(&AudionimbusSource, &SampleEffects), Allow<Disabled>>,
+    mut events: Query<&mut AudioEvents, Allow<Disabled>>,
+) -> Result {
+    let (source, effects) = effects.get(add.entity)?;
+    let mut events = events.get_effect_mut(effects)?;
+    let source: audionimbus::Source = source.0.clone();
+    events.push(NodeEventType::custom(source));
+    Ok(())
+}
+
+fn send_source_to_reverb_processor(
+    source: Res<ListenerSource>,
+    mut events: Single<&mut AudioEvents, With<SteamAudioReverbNode>>,
+) {
+    if source.is_changed() {
+        let source: audionimbus::Source = source.0.clone();
+        events.push(NodeEventType::custom(source));
+    }
+}
+
 #[derive(Resource, Default, Deref, DerefMut)]
 struct ToSetup(Vec<Entity>);
 
 fn queue_audionimbus_source_init(
-    add: On<Add, SteamAudioNode>,
-    effect_of: Query<&EffectOf, Allow<Disabled>>,
+    add: On<Add, FollowerOf>,
+    follower_of: Query<&FollowerOf, Allow<Disabled>>,
+    effect_of: Query<&EffectOf, (With<SteamAudioNode>, Allow<Disabled>)>,
     mut to_setup: ResMut<ToSetup>,
 ) {
-    if let Ok(effect_of) = effect_of.get(add.entity) {
+    if let Ok(follower_of) = follower_of.get(add.entity)
+        && let Ok(effect_of) = effect_of.get(follower_of.0)
+    {
         to_setup.push(effect_of.0);
     }
 }

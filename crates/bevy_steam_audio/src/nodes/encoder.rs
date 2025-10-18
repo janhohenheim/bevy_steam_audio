@@ -1,6 +1,6 @@
 use crate::{
     STEAM_AUDIO_CONTEXT,
-    nodes::FixedProcessBlock,
+    nodes::{FixedProcessBlock, apply_volume_ramp},
     prelude::*,
     settings::SteamAudioQuality,
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs, ToSteamAudioVec3 as _},
@@ -391,8 +391,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
                 .reflections()
                 .into_inner();
-            reflection_effect_params.reflection_effect_type =
-                audionimbus::ReflectionEffectType::Convolution;
+            reflection_effect_params.reflection_effect_type = self.quality.reflections.kind.into();
             reflection_effect_params.num_channels = self.quality.num_channels();
             reflection_effect_params.impulse_response_size = self
                 .quality
@@ -531,17 +530,5 @@ impl AudioNodeProcessor for SteamAudioProcessor {
         let fixed_block_size = self.fixed_block.inputs.channel_capacity;
         let max_output_size = stream_info.max_block_frames.get() as usize;
         self.fixed_block.resize(fixed_block_size, max_output_size);
-    }
-}
-
-fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
-    for channel in buffer {
-        let sample_num = channel.len();
-        for (i, sample) in channel.iter_mut().enumerate() {
-            let fraction = i as f32 / sample_num as f32;
-            let volume = fraction * end_volume + (1.0 - fraction) * start_volume;
-
-            *sample *= volume;
-        }
     }
 }
