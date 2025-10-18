@@ -132,7 +132,6 @@ fn remove_steam_audio_source(
 #[derive(Resource, Default, Deref, DerefMut)]
 pub(crate) struct SourcesToRemove(pub(crate) Vec<audionimbus::Source>);
 
-#[expect(unused_variables, unused_mut, reason = "Needs to be fixed")]
 fn drain_to_remove(
     mut to_remove: ResMut<SourcesToRemove>,
     simulator: ResMut<AudionimbusSimulator>,
