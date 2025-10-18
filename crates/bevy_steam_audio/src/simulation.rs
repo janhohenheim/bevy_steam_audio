@@ -334,26 +334,23 @@ fn update_simulation(
         // User doesn't want any reflection or pathing simulation
         if errors.is_empty() {
             return Ok(());
-        } else {
-            return Err(errors.join("\n").into());
         }
+        return Err(errors.join("\n").into());
     };
     timer.tick(time.delta());
     if !timer.is_finished() {
         // Not yet time to kick off expensive simulation
         if errors.is_empty() {
             return Ok(());
-        } else {
-            return Err(errors.join("\n").into());
         }
+        return Err(errors.join("\n").into());
     }
     if !synchro.complete.load(Ordering::SeqCst) {
         // It's time, but the previous simulation is still running!
         if errors.is_empty() {
             return Ok(());
-        } else {
-            return Err(errors.join("\n").into());
         }
+        return Err(errors.join("\n").into());
     }
 
     // The previous simulation is complete, so we can start the next one
@@ -392,8 +389,8 @@ fn update_simulation(
     synchro.sender.send(())?;
 
     if errors.is_empty() {
-        return Ok(());
+        Ok(())
     } else {
-        return Err(errors.join("\n").into());
+        Err(errors.join("\n").into())
     }
 }
