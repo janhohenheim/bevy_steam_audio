@@ -12,7 +12,7 @@ use firewheel::{
 };
 
 use crate::{
-    nodes::FixedProcessBlock,
+    nodes::{FixedProcessBlock, apply_volume_ramp},
     prelude::*,
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
@@ -21,10 +21,22 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioReverbNode>();
 }
 
-#[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
+#[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SteamAudioReverbNode {
+    pub gain: f32,
+    pub previous_gain: f32,
     pub listener_position: AudionimbusCoordinateSystem,
+}
+
+impl Default for SteamAudioReverbNode {
+    fn default() -> Self {
+        Self {
+            gain: 1.0,
+            previous_gain: 1.0,
+            listener_position: default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
@@ -64,7 +76,7 @@ impl AudioNode for SteamAudioReverbNode {
             frame_size: config.quality.frame_size,
         };
         SteamAudioReverbNodeProcessor {
-            reflection_effect_params: None,
+            source: None,
             reflection_effect: audionimbus::ReflectionEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
@@ -109,7 +121,7 @@ struct SteamAudioReverbNodeProcessor {
     quality: SteamAudioQuality,
     hrtf: audionimbus::Hrtf,
     params: SteamAudioReverbNode,
-    reflection_effect_params: Option<audionimbus::ReflectionEffectParams>,
+    source: Option<audionimbus::Source>,
     reflection_effect: audionimbus::ReflectionEffect,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
     // We might be able to use the scratch buffers for this, but
@@ -129,8 +141,11 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
         extra: &mut ProcExtra,
     ) -> ProcessStatus {
         for mut event in events.drain() {
-            if let Some(params) = event.downcast::<audionimbus::ReflectionEffectParams>() {
-                self.reflection_effect_params = Some(params);
+            if let Some(patch) = SteamAudioReverbNode::patch_event(&event) {
+                Patch::apply(&mut self.params, patch);
+            }
+            if let Some(source) = event.downcast::<audionimbus::Source>() {
+                self.source = Some(source);
             }
         }
 
@@ -140,13 +155,18 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             return ProcessStatus::ClearAllOutputs;
         }
 
-        let (Some(reflection_effect_params),) = (self.reflection_effect_params.as_mut(),) else {
+        let Some(mut source) = self.source.clone() else {
             // If this is encountered at any point other than just
             // after insertion into the graph, then something's gone
             // quite wrong. So, we'll clear the fixed buffers.
             self.fixed_block.clear();
             return ProcessStatus::ClearAllOutputs;
         };
+
+        let mut reflection_effect_params = source
+            .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
+            .reflections()
+            .into_inner();
 
         let scratch_mono = extra.scratch_buffers.first_mut();
         let frame_size = self.fixed_block.frame_size();
@@ -206,6 +226,13 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
                 .quality
                 .impulse_response_size(proc_info.sample_rate.into());
 
+            apply_volume_ramp(
+                self.params.previous_gain,
+                self.params.gain,
+                &mut [scratch_mono],
+            );
+            self.params.previous_gain = self.params.gain;
+
             let settings = audionimbus::AudioBufferSettings {
                 num_channels: Some(self.quality.num_channels()),
                 frame_size: Some(frame_size as u32),
@@ -219,7 +246,7 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             .unwrap();
 
             let _effect_state = self.reflection_effect.apply(
-                reflection_effect_params,
+                &reflection_effect_params,
                 &mono_sa_buffer,
                 &ambisonics_sa_buffer,
             );

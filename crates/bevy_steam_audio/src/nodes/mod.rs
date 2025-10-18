@@ -38,7 +38,7 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
         sample_effects![SteamAudioNode::default()],
     ));
 
-    commands.spawn((SteamAudioReverbNode::default(), SteamAudioReverbBus));
+    commands.spawn((SteamAudioReverbBus, SteamAudioReverbNode::default()));
 
     commands.spawn((
         SamplerPool(SteamAudioReverbPool),
@@ -278,6 +278,18 @@ impl FlatChannels {
             let len = self.length;
 
             lens.push(&self.data[start..start + len]);
+        }
+    }
+}
+
+fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
+    for channel in buffer {
+        let sample_num = channel.len();
+        for (i, sample) in channel.iter_mut().enumerate() {
+            let fraction = i as f32 / sample_num as f32;
+            let volume = fraction * end_volume + (1.0 - fraction) * start_volume;
+
+            *sample *= volume;
         }
     }
 }

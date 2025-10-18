@@ -23,7 +23,6 @@ use bevy_seedling::{
     context::{StreamRestartEvent, StreamStartEvent},
     prelude::*,
 };
-use firewheel::{diff::EventQueue, event::NodeEventType};
 
 use crate::wrapper::*;
 
@@ -224,16 +223,18 @@ fn update_simulation(
     synchro: ResMut<AsyncSimulationSynchronization>,
     mut root: ResMut<SteamAudioRootScene>,
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
-    mut ambisonic_node: Query<(&mut SteamAudioNode, &mut AudioEvents)>,
-    reverb_node: Single<(&mut SteamAudioReverbNode, &mut AudioEvents), Without<SteamAudioNode>>,
+    mut steam_audio_nodes: Query<&mut SteamAudioNode>,
+    mut reverb_node: Single<&mut SteamAudioReverbNode, Without<EffectOf>>,
 
     pathing_settings: Res<SteamAudioPathingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
+    mut errors: Local<Vec<String>>,
 ) -> Result {
     if !enabled.enabled {
         return Ok(());
     }
+    errors.clear();
     let listener_transform = listener.compute_transform();
     let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(listener_transform);
     let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
@@ -297,7 +298,6 @@ fn update_simulation(
         }),
     };
 
-    let (mut reverb_node, mut reverb_events) = reverb_node.into_inner();
     // set inputs
     for (mut source, transform, effects) in nodes.iter_mut() {
         let transform = transform.compute_transform();
@@ -308,8 +308,13 @@ fn update_simulation(
             source_inputs(orientation),
         );
 
-        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
-
+        let mut node = match steam_audio_nodes.get_effect_mut(effects) {
+            Ok(node) => node,
+            Err(err) => {
+                errors.push(format!("Failed to get Steam Audio node from source: {err}"));
+                continue;
+            }
+        };
         node.source_position = orientation;
         node.listener_position = listener_orientation;
     }
@@ -325,39 +330,30 @@ fn update_simulation(
 
     simulator.run_direct();
 
-    // read outputs
-    for (source, _transform, effects) in nodes.iter_mut() {
-        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(source.clone()));
-    }
-
     let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
         // User doesn't want any reflection or pathing simulation
-        return Ok(());
+        if errors.is_empty() {
+            return Ok(());
+        }
+        return Err(errors.join("\n").into());
     };
     timer.tick(time.delta());
     if !timer.is_finished() {
         // Not yet time to kick off expensive simulation
-        return Ok(());
+        if errors.is_empty() {
+            return Ok(());
+        }
+        return Err(errors.join("\n").into());
     }
     if !synchro.complete.load(Ordering::SeqCst) {
         // It's time, but the previous simulation is still running!
-        return Ok(());
+        if errors.is_empty() {
+            return Ok(());
+        }
+        return Err(errors.join("\n").into());
     }
 
     // The previous simulation is complete, so we can start the next one
-
-    // Read the newest outputs
-    for (source, _transform, effects) in nodes.iter_mut() {
-        let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
-        events.push(NodeEventType::custom(source.clone()));
-    }
-
-    let params: audionimbus::ReflectionEffectParams = listener_source
-        .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
-        .reflections()
-        .into_inner();
-    reverb_events.push(NodeEventType::custom(params));
 
     // set new inputs
     simulator.set_shared_inputs(
@@ -378,7 +374,13 @@ fn update_simulation(
             audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
             source_inputs(orientation),
         );
-        let (mut node, mut _events) = ambisonic_node.get_effect_mut(effects)?;
+        let mut node = match steam_audio_nodes.get_effect_mut(effects) {
+            Ok(node) => node,
+            Err(err) => {
+                errors.push(format!("Failed to get Steam Audio node from source: {err}"));
+                continue;
+            }
+        };
         node.pathing_available = probes.is_some();
     }
 
@@ -386,5 +388,9 @@ fn update_simulation(
     timer.reset();
     synchro.sender.send(())?;
 
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n").into())
+    }
 }
