@@ -1,4 +1,4 @@
-use bevy::{color::palettes::tailwind, prelude::*};
+use bevy::{color::palettes::tailwind, input::common_conditions::input_just_pressed, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::{prelude::*, scene::mesh_backend::Mesh3dSteamAudioScenePlugin};
 
@@ -13,6 +13,7 @@ fn main() {
             // Mesh3dSteamAudioScenePlugin does this by using all entities that hold both
             // `Mesh3d` and `SteamAudioMaterial`.
             Mesh3dSteamAudioScenePlugin::default(),
+            plugin,
         ))
         .add_systems(Startup, setup)
         .run();
@@ -30,6 +31,7 @@ fn setup(
     // The sample player uses Steam Audio through the SteamAudioPool
     // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
+        Name::new("My Cool Thingy"),
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
         Transform::from_xyz(-1.5, 0.0, -3.0),
@@ -50,4 +52,35 @@ fn setup(
         DirectionalLight::default(),
         Transform::default().looking_to(Vec3::new(0.5, -1.0, -0.3), Vec3::Y),
     ));
+}
+
+fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        trigger_print.run_if(input_just_pressed(KeyCode::F3)),
+    );
+    app.add_observer(print);
+}
+
+#[derive(EntityEvent)]
+struct Print(Entity);
+
+fn trigger_print(to_inspect: Single<Entity, With<SamplePlayer>>, mut commands: Commands) {
+    commands.trigger(Print(to_inspect.into_inner()));
+}
+
+fn print(print: On<Print>, world: &World) {
+    let name = world
+        .entity(print.0)
+        .get::<Name>()
+        .map(|name| format!(" ({name})"))
+        .unwrap_or_default();
+    let id = world.entity(print.0).id();
+    let mut components = world
+        .inspect_entity(print.0)
+        .unwrap()
+        .map(|info| info.name().to_string())
+        .collect::<Vec<_>>();
+    components.sort();
+    info!("{id}{name}: {components:#?}",);
 }

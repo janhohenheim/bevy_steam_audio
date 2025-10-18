@@ -1,9 +1,13 @@
 use bevy_ecs::entity_disabling::Disabled;
-use bevy_seedling::prelude::EffectOf;
+use bevy_seedling::{
+    node::follower::FollowerOf,
+    prelude::{EffectOf, SampleEffects},
+};
 
 use crate::{prelude::*, simulation::AudionimbusSimulator};
 
 pub(super) fn plugin(app: &mut App) {
+    app.add_plugins(print_plugin);
     app.init_resource::<ToSetup>().init_resource::<ToRemove>();
     app.add_observer(remove_steam_audio_source)
         .add_observer(queue_audionimbus_source_init);
@@ -29,13 +33,43 @@ pub struct AudionimbusSource(pub(crate) audionimbus::Source);
 struct ToSetup(Vec<Entity>);
 
 fn queue_audionimbus_source_init(
-    add: On<Add, SteamAudioNode>,
-    effect_of: Query<&EffectOf, Allow<Disabled>>,
+    add: On<Add, FollowerOf>,
+    follower_of: Query<&FollowerOf, Allow<Disabled>>,
+    effect_of: Query<&EffectOf, (With<SteamAudioNode>, Allow<Disabled>)>,
     mut to_setup: ResMut<ToSetup>,
+    mut commands: Commands,
 ) {
-    if let Ok(effect_of) = effect_of.get(add.entity) {
+    commands.trigger(Print(add.entity));
+
+    if let Ok(follower_of) = follower_of.get(add.entity)
+        && let Ok(effect_of) = effect_of.get(follower_of.0)
+    {
+        commands.trigger(Print(effect_of.0));
         to_setup.push(effect_of.0);
     }
+}
+
+fn print_plugin(app: &mut App) {
+    app.add_observer(print);
+}
+
+#[derive(EntityEvent)]
+struct Print(Entity);
+
+fn print(print: On<Print>, world: &World) {
+    let name = world
+        .entity(print.0)
+        .get::<Name>()
+        .map(|name| format!(" ({name})"))
+        .unwrap_or_default();
+    let id = world.entity(print.0).id();
+    let mut components = world
+        .inspect_entity(print.0)
+        .unwrap()
+        .map(|info| info.name().to_string())
+        .collect::<Vec<_>>();
+    components.sort();
+    info!("{id}{name}: {components:#?}",);
 }
 
 fn init_audionimbus_sources(
@@ -55,6 +89,7 @@ fn init_audionimbus_sources(
     };
     for entity in to_setup.drain(..) {
         if commands.get_entity(entity).is_err() {
+            error!("heck");
             continue;
         }
         let name = names.get(entity).unwrap();

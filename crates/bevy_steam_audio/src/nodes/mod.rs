@@ -38,7 +38,7 @@ pub(crate) fn setup_nodes(mut commands: Commands, quality: Res<SteamAudioQuality
         sample_effects![SteamAudioNode::default()],
     ));
 
-    commands.spawn((SteamAudioReverbNode::default(), SteamAudioReverbBus));
+    commands.spawn((SteamAudioReverbBus, SteamAudioReverbNode::default()));
 
     commands.spawn((
         SamplerPool(SteamAudioReverbPool),
