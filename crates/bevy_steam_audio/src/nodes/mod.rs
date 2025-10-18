@@ -281,3 +281,15 @@ impl FlatChannels {
         }
     }
 }
+
+fn apply_volume_ramp(start_volume: f32, end_volume: f32, buffer: &mut [&mut [f32]]) {
+    for channel in buffer {
+        let sample_num = channel.len();
+        for (i, sample) in channel.iter_mut().enumerate() {
+            let fraction = i as f32 / sample_num as f32;
+            let volume = fraction * end_volume + (1.0 - fraction) * start_volume;
+
+            *sample *= volume;
+        }
+    }
+}

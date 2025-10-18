@@ -347,17 +347,15 @@ fn update_simulation(
 
     // The previous simulation is complete, so we can start the next one
 
-    // Read the newest outputs
     for (source, _transform, effects) in nodes.iter_mut() {
         let (mut _node, mut events) = ambisonic_node.get_effect_mut(effects)?;
         events.push(NodeEventType::custom(source.clone()));
     }
 
-    let params: audionimbus::ReflectionEffectParams = listener_source
-        .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
-        .reflections()
-        .into_inner();
-    reverb_events.push(NodeEventType::custom(params));
+    {
+        let listener_source: audionimbus::Source = listener_source.clone();
+        reverb_events.push(NodeEventType::custom(listener_source));
+    }
 
     // set new inputs
     simulator.set_shared_inputs(
