@@ -339,21 +339,14 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             );
 
             // Binaural Effect
-            let direction = if source_position.origin.distance_squared(listener.origin) < 1e-5 {
-                // "forward" in listener's local space
-                Vec3::Z
-            } else {
-                let world_direction = (source_position.origin - listener.origin).normalize();
+            let direction = audionimbus::relative_direction(
+                &STEAM_AUDIO_CONTEXT,
+                source_position.origin.to_steam_audio_vec3(),
+                listener.origin.to_steam_audio_vec3(),
+                listener.ahead.to_steam_audio_vec3(),
+                listener.up.to_steam_audio_vec3(),
+            );
 
-                // Transform world-space direction into listener's local space
-                // NB: no need to normalize, steam audio does that for us
-                Vec3::new(
-                    world_direction.dot(listener.right),
-                    world_direction.dot(listener.up),
-                    world_direction.dot(listener.ahead),
-                )
-            };
-            let direction = audionimbus::Direction::new(direction.x, direction.y, direction.z);
             let binaural_params = audionimbus::BinauralEffectParams {
                 direction,
                 interpolation: audionimbus::HrtfInterpolation::Bilinear,

@@ -8,7 +8,8 @@ use firewheel::{diff::EventQueue as _, event::NodeEventType};
 use crate::{prelude::*, simulation::AudionimbusSimulator};
 
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<ToSetup>().init_resource::<ToRemove>();
+    app.init_resource::<ToSetup>()
+        .init_resource::<SourcesToRemove>();
     app.add_observer(remove_steam_audio_source)
         .add_observer(queue_audionimbus_source_init)
         .add_observer(send_source_to_processor);
@@ -121,7 +122,7 @@ fn init_audionimbus_sources(
 fn remove_steam_audio_source(
     remove: On<Remove, AudionimbusSource>,
     source: Query<&AudionimbusSource, Allow<Disabled>>,
-    mut to_remove: ResMut<ToRemove>,
+    mut to_remove: ResMut<SourcesToRemove>,
 ) -> Result {
     let source = source.get(remove.entity)?;
     to_remove.0.push(source.0.clone());
@@ -129,10 +130,12 @@ fn remove_steam_audio_source(
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct ToRemove(Vec<audionimbus::Source>);
+pub(crate) struct SourcesToRemove(pub(crate) Vec<audionimbus::Source>);
 
-#[expect(unused_variables, unused_mut, reason = "Needs to be fixed")]
-fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: ResMut<AudionimbusSimulator>) {
+fn drain_to_remove(
+    mut to_remove: ResMut<SourcesToRemove>,
+    simulator: ResMut<AudionimbusSimulator>,
+) {
     if to_remove.is_empty() {
         return;
     }
@@ -141,7 +144,6 @@ fn drain_to_remove(mut to_remove: ResMut<ToRemove>, simulator: ResMut<Audionimbu
         return;
     };
     for source in to_remove.0.drain(..) {
-        // FIXME: Commenting this out leaks memory, but uncommenting it crashes when removing a source
-        // simulator.remove_source(&source);
+        simulator.remove_source(&source);
     }
 }
