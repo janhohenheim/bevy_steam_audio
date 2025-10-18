@@ -31,7 +31,6 @@ fn setup(
     // The sample player uses Steam Audio through the SteamAudioPool
     // Let's place it to the front left of the listener, making direct sound come from the left
     commands.spawn((
-        Name::new("My Cool Thingy"),
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
         SteamAudioPool,
         Transform::from_xyz(-1.5, 0.0, -3.0),
