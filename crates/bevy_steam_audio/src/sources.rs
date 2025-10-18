@@ -145,7 +145,6 @@ fn drain_to_remove(
         return;
     };
     for source in to_remove.0.drain(..) {
-        // FIXME: Commenting this out leaks memory, but uncommenting it crashes when removing a source
-        // simulator.remove_source(&source);
+        simulator.remove_source(&source);
     }
 }
