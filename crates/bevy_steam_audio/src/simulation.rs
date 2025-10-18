@@ -278,9 +278,12 @@ fn update_simulation(
             directivity: Some(audionimbus::Directivity::default()),
             occlusion: Some(audionimbus::Occlusion {
                 transmission: Some(audionimbus::TransmissionParameters {
-                    num_transmission_rays: 4,
+                    num_transmission_rays: 16,
                 }),
-                algorithm: audionimbus::OcclusionAlgorithm::Raycast,
+                algorithm: audionimbus::OcclusionAlgorithm::Volumetric {
+                    radius: 0.3,
+                    num_occlusion_samples: quality.direct.max_num_occlusion_samples,
+                },
             }),
         }),
         reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
