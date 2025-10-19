@@ -73,7 +73,7 @@ fn queue_audionimbus_source_init(
 fn init_audionimbus_sources(
     mut commands: Commands,
     mut to_setup: ResMut<ToSetup>,
-    simulator: ResMut<AudionimbusSimulator>,
+    mut simulator: ResMut<AudionimbusSimulator>,
     mut errors: Local<Vec<String>>,
     names: Query<NameOrEntity>,
     mut to_retry: Local<Vec<Entity>>,
@@ -82,7 +82,7 @@ fn init_audionimbus_sources(
     if to_setup.is_empty() {
         return Ok(());
     }
-    let Ok(simulator) = simulator.try_read() else {
+    let Ok(simulator) = simulator.get().try_read() else {
         return Ok(());
     };
     for entity in to_setup.drain(..) {
@@ -134,12 +134,12 @@ pub(crate) struct SourcesToRemove(pub(crate) Vec<audionimbus::Source>);
 
 fn drain_to_remove(
     mut to_remove: ResMut<SourcesToRemove>,
-    simulator: ResMut<AudionimbusSimulator>,
+    mut simulator: ResMut<AudionimbusSimulator>,
 ) {
     if to_remove.is_empty() {
         return;
     }
-    let Ok(simulator) = simulator.try_read() else {
+    let Ok(simulator) = simulator.get().try_read() else {
         return;
     };
     for source in to_remove.0.drain(..) {
