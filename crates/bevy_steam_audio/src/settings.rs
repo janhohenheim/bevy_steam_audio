@@ -192,7 +192,7 @@ impl SteamAudioQuality {
             num_bounces: self.num_bounces,
             duration: self.reflections.impulse_duration.as_secs_f32(),
             irradiance_min_distance: self.irradiance_min_distance,
-            listener: listener_position.to_audionimbus(),
+            listener: listener_position.into(),
             order: self.order,
             pathing_visualization_callback: None,
         }

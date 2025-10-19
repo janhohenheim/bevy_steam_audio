@@ -254,7 +254,7 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             let decode_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: self.quality.order,
                 hrtf: &self.hrtf,
-                orientation: listener.to_audionimbus(),
+                orientation: listener.into(),
                 binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
