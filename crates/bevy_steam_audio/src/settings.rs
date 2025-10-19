@@ -5,7 +5,7 @@ use crate::{prelude::*, wrapper::AudionimbusCoordinateSystem};
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<SteamAudioEnabled>()
         .init_resource::<SteamAudioQuality>()
-        .init_resource::<SteamAudioPathingSettings>();
+        .init_resource::<SteamAudioPathBakingSettings>();
 }
 
 #[derive(Debug, Clone, PartialEq, Reflect, Resource)]
@@ -63,7 +63,7 @@ pub struct SteamAudioPathingQuality {
     /// The number of point samples to consider when calculating probe-to-probe visibility for pathing simulations.
     /// Baked paths may end up being occluded by dynamic objects, in which case you can configure the simulator to look for alternate paths in real time.
     /// This process will involve checking visibility between probes.
-    num_visibility_samples: u32,
+    pub num_visibility_samples: u32,
 }
 
 impl From<SteamAudioPathingQuality> for audionimbus::PathingSimulationSettings {
@@ -77,7 +77,7 @@ impl From<SteamAudioPathingQuality> for audionimbus::PathingSimulationSettings {
 impl Default for SteamAudioPathingQuality {
     fn default() -> Self {
         Self {
-            num_visibility_samples: 32,
+            num_visibility_samples: 4,
         }
     }
 }
@@ -235,7 +235,7 @@ impl Default for SteamAudioEnabled {
 
 #[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
 #[reflect(Resource)]
-pub struct SteamAudioPathingSettings {
+pub struct SteamAudioPathBakingSettings {
     /// When testing for mutual visibility between a pair of probes, each probe is treated as a sphere of this radius (in meters), and point samples are generated within this sphere.
     pub visibility_radius: f32,
     /// When tracing rays to test for mutual visibility between a pair of probes, the fraction of rays that are unoccluded must be greater than this threshold for the pair of probes to be considered mutually visible.
@@ -243,14 +243,18 @@ pub struct SteamAudioPathingSettings {
     /// If the distance between two probes is greater than this value, the probes are not considered mutually visible.
     /// Increasing this value can result in simpler paths, at the cost of increased CPU usage.
     pub visibility_range: f32,
+    /// If the length of the path between two probes is greater than this value, the probes are considered to not have any path between them.
+    /// Increasing this value allows sound to propagate over greater distances, at the cost of increased bake times and memory usage.
+    pub path_range: f32,
 }
 
-impl Default for SteamAudioPathingSettings {
+impl Default for SteamAudioPathBakingSettings {
     fn default() -> Self {
         Self {
             visibility_radius: 1.0,
-            visibility_threshold: 0.1,
+            visibility_threshold: 0.5,
             visibility_range: 1000.0,
+            path_range: 1000.0,
         }
     }
 }

@@ -45,7 +45,6 @@ fn setup(
         .spawn((
             SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
             SteamAudioPool,
-            sample_effects![SteamAudioNode { ..default() }],
             audio_pos,
             PointLight::default(),
         ))
@@ -65,6 +64,7 @@ fn set_material(
     children: Query<&Children>,
     meshes: Query<(), (With<Mesh3d>, Without<SamplePlayer>)>,
     mut commands: Commands,
+    mut generate_probes: MessageWriter<GenerateProbes>,
 ) {
     for child in children.iter_descendants(ready.entity) {
         if meshes.contains(child) {
@@ -73,4 +73,7 @@ fn set_material(
                 .try_insert((SteamAudioMaterial::GENERIC, Static));
         }
     }
+
+    // Generate probes for pathing. This is optional.
+    generate_probes.write(GenerateProbes::default());
 }

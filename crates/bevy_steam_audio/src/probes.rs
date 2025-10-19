@@ -2,8 +2,8 @@ use bevy_camera::primitives::Aabb;
 use bevy_math::bounding::Aabb3d;
 
 use crate::{
-    prelude::*, scene::SteamAudioRootScene, simulation::AudionimbusSimulator,
-    wrapper::ToSteamAudioTransform,
+    prelude::*, scene::SteamAudioRootScene, settings::SteamAudioPathBakingSettings,
+    simulation::AudionimbusSimulator, wrapper::ToSteamAudioTransform,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -44,6 +44,8 @@ fn generate_probes(
     mut commands: Commands,
     mut simulator: ResMut<AudionimbusSimulator>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
+    pathing_settings: Res<SteamAudioPathBakingSettings>,
+    quality: Res<SteamAudioQuality>,
 ) -> Result {
     let mut global_aabb = None;
     let Some(generate) = generate_probes.drain().last() else {
@@ -63,7 +65,7 @@ fn generate_probes(
                 .fold(Aabb3d::new(Vec3A::ZERO, Vec3A::ZERO), |acc, aabb: &Aabb| {
                     let min = acc.min.min(aabb.min());
                     let max = acc.max.max(aabb.max());
-                    Aabb3d::new(min, max)
+                    Aabb3d { min, max }
                 })
         })
     };
@@ -86,16 +88,45 @@ fn generate_probes(
         error!("Failed to generate any probes. Is the scene empty?");
         return Ok(());
     }
+    debug!("Generated {} probes", array.num_probes());
+
     let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
     batch.add_probe_array(&array);
     batch.commit();
+
     if let Some(old_batch) = probe_batch.as_ref() {
         simulator.remove_probe_batch(old_batch);
     }
     simulator.add_probe_batch(&batch);
     simulator.commit();
 
+    let bake_params = audionimbus::PathBakeParams {
+        scene: &root,
+        probe_batch: &batch,
+        identifier: &audionimbus::BakedDataIdentifier::Pathing {
+            variation: audionimbus::BakedDataVariation::Dynamic,
+        },
+        num_samples: quality.pathing.num_visibility_samples,
+        radius: pathing_settings.visibility_radius,
+        threshold: pathing_settings.visibility_threshold,
+        path_range: pathing_settings.path_range,
+        visibility_range: pathing_settings.visibility_range,
+        num_threads: 4,
+    };
+    audionimbus::bake_path(
+        &STEAM_AUDIO_CONTEXT,
+        &bake_params,
+        Some(audionimbus::CallbackInformation {
+            callback: progress_callback,
+            user_data: std::ptr::null_mut(),
+        }),
+    );
+
     commands.insert_resource(SteamAudioProbeBatch(batch));
 
     Ok(())
+}
+
+unsafe extern "C" fn progress_callback(progress: f32, _user_data: *mut std::ffi::c_void) {
+    debug!("Pathing progress: {:.2}%", progress * 100.0);
 }
