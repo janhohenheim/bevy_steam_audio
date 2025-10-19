@@ -294,7 +294,11 @@ fn update_simulation(
         direct_simulation: Some(audionimbus::DirectSimulationParameters {
             distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
             air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-            directivity: Some(audionimbus::Directivity::default()),
+            directivity: Some(audionimbus::Directivity::WeightedDipole {
+                // TODO: make sure this is synchronized with the encoder. Right now they both happen to hardcode the same values.
+                weight: 0.0,
+                power: 0.0,
+            }),
             occlusion: Some(audionimbus::Occlusion {
                 transmission: Some(audionimbus::TransmissionParameters {
                     num_transmission_rays: 16,
