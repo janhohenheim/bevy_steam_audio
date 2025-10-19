@@ -1,4 +1,3 @@
-use audionimbus::CallbackInformation;
 use bevy_camera::primitives::Aabb;
 use bevy_math::bounding::Aabb3d;
 
@@ -88,9 +87,9 @@ fn generate_probes(
     if array.num_probes() == 0 {
         error!("Failed to generate any probes. Is the scene empty?");
         return Ok(());
-    } else {
-        info!("Generated {} probes", array.num_probes());
     }
+    debug!("Generated {} probes", array.num_probes());
+
     let mut batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
     batch.add_probe_array(&array);
     batch.commit();
@@ -117,9 +116,9 @@ fn generate_probes(
     audionimbus::bake_path(
         &STEAM_AUDIO_CONTEXT,
         &bake_params,
-        Some(CallbackInformation {
+        Some(audionimbus::CallbackInformation {
+            callback: progress_callback,
             user_data: std::ptr::null_mut(),
-            callback: bake_trampoline,
         }),
     );
 
@@ -128,7 +127,6 @@ fn generate_probes(
     Ok(())
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bake_trampoline(progress: f32, user_data: *mut std::ffi::c_void) {
-    info!(?progress);
+unsafe extern "C" fn progress_callback(progress: f32, _user_data: *mut std::ffi::c_void) {
+    debug!("Pathing progress: {:.2}%", progress * 100.0);
 }

@@ -3,7 +3,7 @@ use avian3d::PhysicsPlugins;
 use bevy::{camera::Exposure, color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::prelude::*;
-use bevy_trenchbroom::prelude::*;
+use bevy_trenchbroom::{physics::SceneCollidersReady, prelude::*};
 use trenchbroom_steam_audio::prelude::*;
 
 use crate::util::prelude::{CameraController, CameraControllerPlugin};
@@ -40,6 +40,7 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_observer(setup_loud_speaker)
+        .add_observer(bake_paths)
         .run();
 }
 
@@ -71,8 +72,8 @@ fn setup_loud_speaker(
             SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
             SteamAudioPool,
             sample_effects![SteamAudioNode {
-                direct_gain: 0.2,
-                reflection_gain: 0.7,
+                direct_gain: 0.0,
+                reflection_gain: 0.0,
                 ..default()
             }],
             PointLight {
@@ -89,4 +90,8 @@ fn setup_loud_speaker(
                 ..StandardMaterial::from(Color::from(tailwind::GREEN_400))
             })),
         ));
+}
+
+fn bake_paths(_ready: On<SceneCollidersReady>, mut generate_probes: MessageWriter<GenerateProbes>) {
+    generate_probes.write(GenerateProbes::default());
 }

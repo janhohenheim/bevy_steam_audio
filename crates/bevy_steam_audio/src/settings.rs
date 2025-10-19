@@ -182,16 +182,6 @@ pub(crate) fn order_to_num_channels(order: u32) -> u32 {
     (order + 1).pow(2)
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn pathing_visualization_trampoline(
-    from: audionimbus_sys::IPLVector3,
-    to: audionimbus_sys::IPLVector3,
-    occluded: audionimbus_sys::IPLbool,
-    user_data: *mut std::ffi::c_void,
-) {
-    info!(?from, ?to, ?occluded);
-}
-
 impl SteamAudioQuality {
     pub(crate) fn to_audionimbus_simulation_shared_inputs(
         self,
@@ -204,10 +194,7 @@ impl SteamAudioQuality {
             irradiance_min_distance: self.irradiance_min_distance,
             listener: listener_position.into(),
             order: self.order,
-            pathing_visualization_callback: Some(audionimbus::CallbackInformation {
-                callback: pathing_visualization_trampoline,
-                user_data: std::ptr::null_mut(),
-            }),
+            pathing_visualization_callback: None,
         }
     }
 
