@@ -11,7 +11,6 @@ use avian3d::parry::shape::{SharedShape, TypedShape};
 use avian3d::prelude::*;
 use bevy_log::warn;
 use bevy_mesh::prelude::*;
-use bevy_reflect::prelude::*;
 use bevy_utils::default;
 use thiserror::Error;
 
@@ -76,7 +75,7 @@ pub(crate) struct TrimeshBuilder {
 }
 
 /// A generic triangle mesh representation.
-#[derive(Debug, Clone, PartialEq, Reflect, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct Trimesh {
     /// The vertices in world space
     pub(crate) vertices: Vec<Vector>,

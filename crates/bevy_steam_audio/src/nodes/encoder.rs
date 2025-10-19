@@ -58,9 +58,11 @@ impl Default for SteamAudioNode {
     }
 }
 
-#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
+#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Reflect, Default)]
 #[component(on_add = on_add_steam_audio_node_config)]
+#[reflect(Component)]
 pub struct SteamAudioNodeConfig {
+    #[reflect(ignore)]
     pub(crate) hrtf: Option<audionimbus::Hrtf>,
     pub(crate) quality: SteamAudioQuality,
 }
@@ -310,7 +312,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 .into_inner();
             direct_effect_params.directivity = Some(audionimbus::directivity_attenuation(
                 &STEAM_AUDIO_CONTEXT,
-                source_position.to_audionimbus(),
+                source_position.into(),
                 listener.origin.to_steam_audio_vec3(),
                 // Full omnidirectional
                 &audionimbus::Directivity::WeightedDipole {
@@ -406,7 +408,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: self.quality.order,
                 hrtf: &self.hrtf,
-                orientation: listener.to_audionimbus(),
+                orientation: listener.into(),
                 binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
@@ -424,7 +426,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                     .pathing()
                     .into_inner();
                 pathing_effect_params.order = self.quality.order;
-                pathing_effect_params.listener = listener.to_audionimbus();
+                pathing_effect_params.listener = listener.into();
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
                 for coeff in &mut pathing_effect_params.eq_coeffs {

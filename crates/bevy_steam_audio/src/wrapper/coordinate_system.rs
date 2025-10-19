@@ -13,8 +13,8 @@ pub struct AudionimbusCoordinateSystem {
     pub origin: Vec3,
 }
 
-impl AudionimbusCoordinateSystem {
-    pub fn from_bevy_transform(transform: Transform) -> Self {
+impl From<Transform> for AudionimbusCoordinateSystem {
+    fn from(transform: Transform) -> Self {
         let listener_position = transform.translation;
 
         let listener_orientation_right = transform.right();
@@ -27,13 +27,20 @@ impl AudionimbusCoordinateSystem {
             origin: listener_position,
         }
     }
+}
+impl From<GlobalTransform> for AudionimbusCoordinateSystem {
+    fn from(transform: GlobalTransform) -> Self {
+        Self::from(transform.compute_transform())
+    }
+}
 
-    pub fn to_audionimbus(self) -> audionimbus::CoordinateSystem {
+impl From<AudionimbusCoordinateSystem> for audionimbus::CoordinateSystem {
+    fn from(coordinate_system: AudionimbusCoordinateSystem) -> Self {
         audionimbus::CoordinateSystem {
-            right: self.right.to_steam_audio_vec3(),
-            up: self.up.to_steam_audio_vec3(),
-            ahead: self.ahead.to_steam_audio_vec3(),
-            origin: self.origin.to_steam_audio_vec3(),
+            right: coordinate_system.right.to_steam_audio_vec3(),
+            up: coordinate_system.up.to_steam_audio_vec3(),
+            ahead: coordinate_system.ahead.to_steam_audio_vec3(),
+            origin: coordinate_system.origin.to_steam_audio_vec3(),
         }
     }
 }

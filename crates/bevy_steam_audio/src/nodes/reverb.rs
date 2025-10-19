@@ -39,9 +39,11 @@ impl Default for SteamAudioReverbNode {
     }
 }
 
-#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
+#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Reflect, Default)]
 #[component(on_add = on_add_steam_audio_reverb_node_config)]
+#[reflect(Component)]
 pub struct SteamAudioReverbNodeConfig {
+    #[reflect(ignore)]
     pub(crate) hrtf: Option<audionimbus::Hrtf>,
     pub(crate) quality: SteamAudioQuality,
 }
@@ -254,7 +256,7 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             let decode_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: self.quality.order,
                 hrtf: &self.hrtf,
-                orientation: listener.to_audionimbus(),
+                orientation: listener.into(),
                 binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(

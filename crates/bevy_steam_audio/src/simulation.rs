@@ -256,7 +256,7 @@ fn update_simulation(
     }
     errors.clear();
     let listener_transform = listener.compute_transform();
-    let listener_orientation = AudionimbusCoordinateSystem::from_bevy_transform(listener_transform);
+    let listener_orientation = listener_transform.into();
     let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
 
     if synchro.complete.load(Ordering::SeqCst) {
@@ -270,7 +270,7 @@ fn update_simulation(
     }
 
     let listener_inputs = audionimbus::SimulationInputs {
-        source: listener_orientation.to_audionimbus(),
+        source: listener_orientation.into(),
         direct_simulation: None,
         reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
             baked_data_identifier: None,
@@ -290,7 +290,7 @@ fn update_simulation(
     };
     // TODO: make this configurable
     let source_inputs = |orientation: AudionimbusCoordinateSystem| audionimbus::SimulationInputs {
-        source: orientation.to_audionimbus(),
+        source: orientation.into(),
         direct_simulation: Some(audionimbus::DirectSimulationParameters {
             distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
             air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
@@ -329,7 +329,7 @@ fn update_simulation(
     // set inputs
     for (mut source, transform, effects) in nodes.iter_mut() {
         let transform = transform.compute_transform();
-        let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
+        let orientation = transform.into();
 
         source.set_inputs(
             audionimbus::SimulationFlags::DIRECT,
@@ -397,7 +397,7 @@ fn update_simulation(
 
     for (mut source, transform, effects) in nodes.iter_mut() {
         let transform = transform.compute_transform();
-        let orientation = AudionimbusCoordinateSystem::from_bevy_transform(transform);
+        let orientation = transform.into();
 
         source.set_inputs(
             audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
