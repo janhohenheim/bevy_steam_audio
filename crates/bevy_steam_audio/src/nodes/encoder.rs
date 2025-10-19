@@ -58,9 +58,11 @@ impl Default for SteamAudioNode {
     }
 }
 
-#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Default)]
+#[derive(Debug, Clone, RealtimeClone, PartialEq, Component, Reflect, Default)]
 #[component(on_add = on_add_steam_audio_node_config)]
+#[reflect(Component)]
 pub struct SteamAudioNodeConfig {
+    #[reflect(ignore)]
     pub(crate) hrtf: Option<audionimbus::Hrtf>,
     pub(crate) quality: SteamAudioQuality,
 }

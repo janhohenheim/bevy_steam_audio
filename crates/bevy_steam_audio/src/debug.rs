@@ -28,6 +28,7 @@ impl Plugin for SteamAudioDebugPlugin {
 
 #[derive(Default, Component, Reflect)]
 #[require(Transform, GlobalTransform)]
+#[reflect(Component)]
 pub struct SteamAudioGizmo {
     pub vertices: Vec<Vec3>,
     pub indices: Vec<[u32; 3]>,

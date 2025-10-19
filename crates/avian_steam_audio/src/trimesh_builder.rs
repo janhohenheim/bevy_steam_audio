@@ -76,7 +76,7 @@ pub(crate) struct TrimeshBuilder {
 }
 
 /// A generic triangle mesh representation.
-#[derive(Debug, Clone, PartialEq, Reflect, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct Trimesh {
     /// The vertices in world space
     pub(crate) vertices: Vec<Vector>,
