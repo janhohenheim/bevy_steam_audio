@@ -11,7 +11,6 @@ use avian3d::parry::shape::{SharedShape, TypedShape};
 use avian3d::prelude::*;
 use bevy_log::warn;
 use bevy_mesh::prelude::*;
-use bevy_reflect::prelude::*;
 use bevy_utils::default;
 use thiserror::Error;
 
