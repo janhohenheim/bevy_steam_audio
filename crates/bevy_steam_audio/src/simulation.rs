@@ -15,7 +15,9 @@ use crate::{
     prelude::*,
     probes::SteamAudioProbeBatch,
     scene::SteamAudioRootScene,
-    settings::{SteamAudioEnabled, SteamAudioHrtf, SteamAudioPathingSettings, SteamAudioQuality},
+    settings::{
+        SteamAudioEnabled, SteamAudioHrtf, SteamAudioPathBakingSettings, SteamAudioQuality,
+    },
     sources::{AudionimbusSource, ListenerSource, SourcesToRemove},
 };
 
@@ -246,7 +248,7 @@ fn update_simulation(
     mut steam_audio_nodes: Query<&mut SteamAudioNode>,
     mut reverb_node: Single<&mut SteamAudioReverbNode, Without<EffectOf>>,
 
-    pathing_settings: Res<SteamAudioPathingSettings>,
+    pathing_settings: Res<SteamAudioPathBakingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
     mut errors: Local<Vec<String>>,
