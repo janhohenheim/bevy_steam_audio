@@ -56,10 +56,9 @@ struct AsyncSimulationSynchronization {
     complete: Arc<AtomicBool>,
 }
 
-#[derive(Resource, Deref, DerefMut)]
+#[derive(Resource)]
 pub struct AudionimbusSimulator {
-    #[deref]
-    pub simulator: Arc<
+    simulator: Arc<
         RwLock<
             audionimbus::Simulator<
                 audionimbus::Direct,
@@ -69,6 +68,25 @@ pub struct AudionimbusSimulator {
         >,
     >,
     pub sampling_rate: NonZeroU32,
+}
+impl AudionimbusSimulator {
+    /// Used to force consumers to only ever use `ResMut` and not `Res`,
+    /// as running two things simultaneously on the underlying Steam Audio simulator
+    /// needs to be carefully managed, even when using `.read()`. E.g. it's easy to accidentally
+    /// have two systems adding a source to the same simulator in parallel if this was used with `Res`.
+    pub fn get(
+        &mut self,
+    ) -> &Arc<
+        RwLock<
+            audionimbus::Simulator<
+                audionimbus::Direct,
+                audionimbus::Reflections,
+                audionimbus::Pathing,
+            >,
+        >,
+    > {
+        &self.simulator
+    }
 }
 
 #[derive(Event)]
@@ -217,7 +235,7 @@ fn create_simulator(
 
 /// Inspired by the Unity Steam Audio plugin.
 fn update_simulation(
-    simulator: ResMut<AudionimbusSimulator>,
+    mut simulator: ResMut<AudionimbusSimulator>,
     quality: Res<SteamAudioQuality>,
     mut enabled: ResMut<SteamAudioEnabled>,
     listener: Single<&GlobalTransform, With<SteamAudioListener>>,
@@ -245,6 +263,7 @@ fn update_simulation(
         root.commit();
         // This should never fail unless there's a bug, as this branch should only be called when the reflection thread is idle.
         simulator
+            .get()
             .try_write()
             .map_err(|e| format!("Failed to commit simulator even though it should be idle: {e}"))?
             .commit();
@@ -328,6 +347,7 @@ fn update_simulation(
     reverb_node.listener_position = listener_orientation;
 
     let simulator = simulator
+        .get()
         .try_read()
         .map_err(|e| format!("Failed to run simulator even though it should be idle: {e}"))?;
 

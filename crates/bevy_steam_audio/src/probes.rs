@@ -42,14 +42,14 @@ fn generate_probes(
     aabbs: Query<&Aabb>,
     root: ResMut<SteamAudioRootScene>,
     mut commands: Commands,
-    simulator: ResMut<AudionimbusSimulator>,
+    mut simulator: ResMut<AudionimbusSimulator>,
     probe_batch: Option<Res<SteamAudioProbeBatch>>,
 ) -> Result {
     let mut global_aabb = None;
     let Some(generate) = generate_probes.drain().last() else {
         return Ok(());
     };
-    let Ok(mut simulator) = simulator.try_write() else {
+    let Ok(mut simulator) = simulator.get().try_write() else {
         // Simulator is in use, try again next frame
         generate_probes.write(generate);
         return Ok(());
