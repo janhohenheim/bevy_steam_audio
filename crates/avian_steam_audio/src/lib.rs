@@ -93,6 +93,7 @@ fn add_collider(
     add: On<Add, ColliderOf>,
     collider: Query<
         (
+            &ColliderOf,
             Has<Sensor>,
             Has<NotSteamAudioCollider>,
             Has<SteamAudioMaterial>,
@@ -103,11 +104,12 @@ fn add_collider(
     rigid_body: Query<&RigidBody, Allow<Disabled>>,
     settings: Res<AvianSteamAudioSettings>,
 ) -> Result {
-    let (has_sensor, not_steam_audio_collider, has_material) = collider.get(add.entity)?;
+    let (collider_of, has_sensor, not_steam_audio_collider, has_material) =
+        collider.get(add.entity)?;
     if has_sensor || not_steam_audio_collider {
         return Ok(());
     }
-    let rigid_body = rigid_body.get(add.entity)?;
+    let rigid_body = rigid_body.get(collider_of.body)?;
     commands
         .entity(add.entity)
         .try_insert(InSteamAudioMeshSpawnQueue);
