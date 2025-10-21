@@ -35,7 +35,7 @@ pub struct AudionimbusSource(pub(crate) audionimbus::Source);
 fn send_source_to_processor(
     add: On<Add, AudionimbusSource>,
     effects: Query<(&AudionimbusSource, &SampleEffects), Allow<Disabled>>,
-    mut events: Query<&mut AudioEvents, Allow<Disabled>>,
+    mut events: Query<&mut AudioEvents, (With<SteamAudioNode>, Allow<Disabled>)>,
 ) -> Result {
     let (source, effects) = effects.get(add.entity)?;
     let mut events = events.get_effect_mut(effects)?;
