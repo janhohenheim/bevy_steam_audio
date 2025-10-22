@@ -22,7 +22,7 @@ trenchbroom_steam_audio = { version = "0.1.0", path = "crates/trenchbroom_steam_
 audionimbus = { version = "0.9.0", default-features = false }
 audionimbus-sys = { version = "4.7.1-rc.1",  default-features = false }
 
-bevy_seedling = { version = "0.6.0", default-features = false }
+bevy_seedling = { version = "0.6.0", default-features = false, features = ["reflect"] }
 bevy_app = { version = "0.17", default-features = false }
 bevy_ecs = { version = "0.17", default-features = false }
 bevy_transform = { version = "0.17", default-features = false }

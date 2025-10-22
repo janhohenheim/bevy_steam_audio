@@ -1343,6 +1343,7 @@ dependencies = [
  "bevy_time",
  "bevy_transform",
  "firewheel",
+ "firewheel-ircam-hrtf",
  "smallvec",
  "symphonia",
  "symphonium",
@@ -2754,6 +2755,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "firewheel-ircam-hrtf"
+version = "0.2.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6b8e221c41773f4bd2b5a5df3d0dca0fb34a869383ac1c9802ce28b699f4e2"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "firewheel",
+ "glam 0.30.8",
+ "hrtf",
+]
+
+[[package]]
 name = "firewheel-macros"
 version = "0.8.0-rc.1"
 source = "git+https://github.com/BillyDM/firewheel#3b2af9fe3282edf53c15b57d2f3f673ca705cb27"
@@ -2800,7 +2814,7 @@ dependencies = [
  "arrayvec",
  "fast-interleave",
  "ringbuf",
- "rubato",
+ "rubato 0.16.2",
 ]
 
 [[package]]
@@ -3337,6 +3351,17 @@ name = "hexf-parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+
+[[package]]
+name = "hrtf"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f4de47a84fd55fa33aa5ef337016814fdc869fdad23e7898b5322fa290248e6"
+dependencies = [
+ "byteorder",
+ "rubato 0.14.1",
+ "rustfft",
+]
 
 [[package]]
 name = "ident_case"
@@ -4884,6 +4909,18 @@ dependencies = [
  "heapless",
  "num-traits",
  "smallvec",
+]
+
+[[package]]
+name = "rubato"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6dd52e80cfc21894deadf554a5673002938ae4625f7a283e536f9cf7c17b0d5"
+dependencies = [
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "realfft",
 ]
 
 [[package]]

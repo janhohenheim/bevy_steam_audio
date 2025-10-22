@@ -6,10 +6,11 @@ use crate::{
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs},
 };
 
-use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
+use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
     node::RegisterNode as _,
+    pool::Sampler,
     prelude::*,
 };
 use firewheel::{
@@ -24,18 +25,20 @@ use firewheel::{
 
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<AmbisonicDecodeNode>();
+    app.add_observer(reset_steam_audio_decode_node);
 }
 
 #[derive(Diff, Patch, Debug, Default, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct AmbisonicDecodeNode {
-    pub(crate) listener_orientation: AudionimbusCoordinateSystem,
+    pub listener_orientation: AudionimbusCoordinateSystem,
+    pub reset: Notify<()>,
 }
 
 #[derive(Debug, Clone, RealtimeClone, PartialEq, Default, Component, Reflect)]
 #[reflect(Component)]
 #[component(on_add = on_add_decode_node_config)]
-pub struct SteamAudioDecodeNodeConfig {
+pub struct AmbisonicDecodeNodeConfig {
     /// Set to `None` to use the global [`SteamAudioQuality::order`].
     /// Set to `Some` if this is for some custom ambisonic audio you want to decode.
     pub order: Option<u32>,
@@ -45,21 +48,34 @@ pub struct SteamAudioDecodeNodeConfig {
 fn on_add_decode_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let quality = *world.resource::<SteamAudioQuality>();
     let mut entity = world.entity_mut(ctx.entity);
-    let mut config = entity.get_mut::<SteamAudioDecodeNodeConfig>().unwrap();
+    let mut config = entity.get_mut::<AmbisonicDecodeNodeConfig>().unwrap();
     if config.order.is_none() {
         config.order = Some(quality.order);
     }
     config.quality = quality;
 }
 
-impl SteamAudioDecodeNodeConfig {
+fn reset_steam_audio_decode_node(
+    add: On<Add, Sampler>,
+    effects: Query<&SampleEffects, Allow<Disabled>>,
+    mut node: Query<&mut AmbisonicDecodeNode>,
+) -> Result {
+    let effects = effects.get(add.entity)?;
+    let Ok(mut node) = node.get_effect_mut(effects) else {
+        return Ok(());
+    };
+    node.reset.notify();
+    Ok(())
+}
+
+impl AmbisonicDecodeNodeConfig {
     pub(crate) fn num_channels(&self) -> u32 {
         order_to_num_channels(self.order.unwrap())
     }
 }
 
 impl AudioNode for AmbisonicDecodeNode {
-    type Configuration = SteamAudioDecodeNodeConfig;
+    type Configuration = AmbisonicDecodeNodeConfig;
 
     fn info(&self, config: &Self::Configuration) -> AudioNodeInfo {
         AudioNodeInfo::new()
@@ -141,6 +157,9 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
         _: &mut ProcExtra,
     ) -> ProcessStatus {
         for patch in events.drain_patches::<AmbisonicDecodeNode>() {
+            if matches!(patch, AmbisonicDecodeNodePatch::Reset(..)) {
+                self.ambisonics_decode_effect.reset();
+            }
             Patch::apply(&mut self.params, patch);
         }
 
