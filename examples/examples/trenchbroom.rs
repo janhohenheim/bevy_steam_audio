@@ -4,6 +4,7 @@ use bevy::{camera::Exposure, color::palettes::tailwind, prelude::*};
 use bevy_seedling::prelude::*;
 use bevy_steam_audio::prelude::*;
 use bevy_trenchbroom::{physics::SceneCollidersReady, prelude::*};
+use bevy_trenchbroom_avian::AvianPhysicsBackend;
 use trenchbroom_steam_audio::prelude::*;
 
 use crate::util::prelude::{CameraController, CameraControllerPlugin};
@@ -28,6 +29,7 @@ fn main() {
                             .smooth_by_default_angle()
                     }),
             ),
+            TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
             // The debug plugin displays the audio meshes with a different color for each material
             SteamAudioDebugPlugin,
             CameraControllerPlugin,

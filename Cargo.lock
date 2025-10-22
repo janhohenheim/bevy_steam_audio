@@ -1581,11 +1581,11 @@ dependencies = [
 [[package]]
 name = "bevy_trenchbroom"
 version = "0.10.0"
-source = "git+https://github.com/Noxmore/bevy_trenchbroom#eddf3dba140baf77f262f49440bafb3783983fec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4b93cad2bec187722efc0b053469b494df51e87e242db9a46d06211bd695653"
 dependencies = [
  "anyhow",
  "atomicow",
- "avian3d",
  "bevy",
  "bevy_materialize",
  "bevy_mesh",
@@ -1610,9 +1610,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_trenchbroom_avian"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a053fe2d61bcd96f9e93ffa0c4b630c2663fe484e15b3b70df8f1c06662f30a"
+dependencies = [
+ "avian3d",
+ "bevy",
+ "bevy_trenchbroom",
+]
+
+[[package]]
 name = "bevy_trenchbroom_macros"
 version = "0.10.0"
-source = "git+https://github.com/Noxmore/bevy_trenchbroom#eddf3dba140baf77f262f49440bafb3783983fec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3542bde1ff424a7cba679620b509af443302ff6cb7f90c1479ed7de2e8bf266"
 dependencies = [
  "deluxe",
  "heck 0.5.0",
@@ -5300,6 +5312,7 @@ dependencies = [
  "bevy_seedling",
  "bevy_steam_audio",
  "bevy_trenchbroom",
+ "bevy_trenchbroom_avian",
  "criterion",
  "trenchbroom_steam_audio",
 ]
