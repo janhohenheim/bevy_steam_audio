@@ -275,4 +275,42 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
             result
         }
     }
+
+    fn new_stream(
+        &mut self,
+        stream_info: &firewheel::StreamInfo,
+        _context: &mut firewheel::node::ProcStreamCtx,
+    ) {
+        if stream_info.sample_rate.get() == stream_info.prev_sample_rate.get()
+            && stream_info.max_block_frames.get() == self.fixed_block.max_block_frames() as u32
+        {
+            return;
+        }
+
+        let settings = audionimbus::AudioSettings {
+            sampling_rate: stream_info.sample_rate.get(),
+            frame_size: self.quality.frame_size,
+        };
+        self.reflection_effect = audionimbus::ReflectionEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::ReflectionEffectSettings::Convolution {
+                impulse_response_size: self
+                    .quality
+                    .impulse_response_size(stream_info.sample_rate.into()),
+                num_channels: self.quality.num_channels(),
+            },
+        )
+        .unwrap();
+        self.ambisonics_decode_effect = audionimbus::AmbisonicsDecodeEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::AmbisonicsDecodeEffectSettings {
+                max_order: self.quality.order,
+                speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                hrtf: &self.hrtf,
+            },
+        )
+        .unwrap();
+    }
 }

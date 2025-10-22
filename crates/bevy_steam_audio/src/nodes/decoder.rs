@@ -32,14 +32,14 @@ pub struct AmbisonicDecodeNode {
     pub(crate) listener_orientation: AudionimbusCoordinateSystem,
 }
 
-#[derive(Diff, Patch, Debug, Clone, RealtimeClone, PartialEq, Default, Component, Reflect)]
+#[derive(Debug, Clone, RealtimeClone, PartialEq, Default, Component, Reflect)]
 #[reflect(Component)]
 #[component(on_add = on_add_decode_node_config)]
 pub struct SteamAudioDecodeNodeConfig {
     /// Set to `None` to use the global [`SteamAudioQuality::order`].
     /// Set to `Some` if this is for some custom ambisonic audio you want to decode.
     pub order: Option<u32>,
-    pub frame_size: u32,
+    pub(crate) quality: SteamAudioQuality,
 }
 
 fn on_add_decode_node_config(mut world: DeferredWorld, ctx: HookContext) {
@@ -49,7 +49,7 @@ fn on_add_decode_node_config(mut world: DeferredWorld, ctx: HookContext) {
     if config.order.is_none() {
         config.order = Some(quality.order);
     }
-    config.frame_size = quality.frame_size;
+    config.quality = quality;
 }
 
 impl SteamAudioDecodeNodeConfig {
@@ -77,7 +77,7 @@ impl AudioNode for AmbisonicDecodeNode {
     ) -> impl AudioNodeProcessor {
         let settings = audionimbus::AudioSettings {
             sampling_rate: cx.stream_info.sample_rate.get(),
-            frame_size: config.frame_size,
+            frame_size: config.quality.frame_size,
         };
         let hrtf = audionimbus::Hrtf::try_new(
             &STEAM_AUDIO_CONTEXT,
@@ -91,7 +91,7 @@ impl AudioNode for AmbisonicDecodeNode {
 
         SteamAudioDecodeProcessor {
             fixed_block: FixedProcessBlock::new(
-                config.frame_size as usize,
+                config.quality.frame_size as usize,
                 cx.stream_info.max_block_frames.get() as usize,
                 config.num_channels() as usize,
                 2,
@@ -109,7 +109,7 @@ impl AudioNode for AmbisonicDecodeNode {
             )
             .unwrap(),
             order: config.order.unwrap(),
-            frame_size: config.frame_size,
+            quality: config.quality,
             mix_ptrs: ChannelPtrs::new(config.num_channels() as usize),
         }
     }
@@ -121,8 +121,8 @@ struct SteamAudioDecodeProcessor {
     hrtf: audionimbus::Hrtf,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
     order: u32,
-    frame_size: u32,
     mix_ptrs: ChannelPtrs,
+    quality: SteamAudioQuality,
 }
 
 impl SteamAudioDecodeProcessor {
@@ -158,7 +158,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             #[expect(clippy::needless_range_loop, reason = "More readable like this")]
             for channel in 0..channels as usize {
                 let channel_buffer = &inputs[channel];
-                assert_eq!(channel_buffer.len(), self.frame_size as usize);
+                assert_eq!(channel_buffer.len(), self.quality.frame_size as usize);
                 self.mix_ptrs[channel] = channel_buffer.as_ptr().cast_mut();
             }
 
@@ -170,15 +170,15 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             let input_sa_buffer = unsafe {
                 audionimbus::AudioBuffer::<&[f32], _>::try_new(
                     self.mix_ptrs.as_mut(),
-                    self.frame_size,
+                    self.quality.frame_size,
                 )
                 .unwrap()
             };
 
             let (left, right) = outputs.split_at_mut(1);
 
-            assert_eq!(left[0].len(), self.frame_size as usize);
-            assert_eq!(right[0].len(), self.frame_size as usize);
+            assert_eq!(left[0].len(), self.quality.frame_size as usize);
+            assert_eq!(right[0].len(), self.quality.frame_size as usize);
 
             let mut channel_ptrs = [left[0].as_mut_ptr(), right[0].as_mut_ptr()];
 
@@ -189,7 +189,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
             let output_sa_buffer = unsafe {
                 audionimbus::AudioBuffer::<&mut [f32], _>::try_new(
                     channel_ptrs.as_mut_slice(),
-                    self.frame_size,
+                    self.quality.frame_size,
                 )
                 .unwrap()
             };
@@ -221,7 +221,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
 
         let settings = audionimbus::AudioSettings {
             sampling_rate: stream_info.sample_rate.get(),
-            frame_size: self.frame_size,
+            frame_size: self.quality.frame_size,
         };
         let hrtf = audionimbus::Hrtf::try_new(
             &STEAM_AUDIO_CONTEXT,
