@@ -6,7 +6,10 @@ members = [
 resolver = "3"
 
 [workspace.package]
-authors = ["Jan Hohenheim <jan@hohenheim.ch>"]
+authors = [
+    "Jan Hohenheim <jan@hohenheim.ch>",
+    "Corvus Prudens <corvusprudens@gmail.com>"
+]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/janhohenheim/bevy_steam_audio"
