@@ -7,10 +7,11 @@ use crate::{
 };
 
 use audionimbus::AudioBuffer;
-use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
+use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
     node::RegisterNode as _,
+    pool::Sampler,
     prelude::*,
 };
 use firewheel::{
@@ -25,6 +26,7 @@ use firewheel::{
 
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioNode>();
+    app.add_observer(reset_steam_audio_node);
 }
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
@@ -39,6 +41,7 @@ pub struct SteamAudioNode {
     pub source_position: AudionimbusCoordinateSystem,
     pub listener_position: AudionimbusCoordinateSystem,
     pub pathing_available: bool,
+    pub reset: Notify<()>,
 }
 
 impl Default for SteamAudioNode {
@@ -54,6 +57,7 @@ impl Default for SteamAudioNode {
             source_position: AudionimbusCoordinateSystem::default(),
             listener_position: AudionimbusCoordinateSystem::default(),
             pathing_available: false,
+            reset: Notify::default(),
         }
     }
 }
@@ -72,6 +76,19 @@ fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
     let mut entity = world.entity_mut(ctx.entity);
     let mut config = entity.get_mut::<SteamAudioNodeConfig>().unwrap();
     config.quality = quality;
+}
+
+fn reset_steam_audio_node(
+    add: On<Add, Sampler>,
+    effects: Query<&SampleEffects, Allow<Disabled>>,
+    mut node: Query<&mut SteamAudioNode>,
+) -> Result {
+    let effects = effects.get(add.entity)?;
+    let Ok(mut node) = node.get_effect_mut(effects) else {
+        return Ok(());
+    };
+    node.reset.notify();
+    Ok(())
 }
 
 impl AudioNode for SteamAudioNode {
@@ -191,6 +208,13 @@ impl AudioNodeProcessor for SteamAudioProcessor {
     ) -> ProcessStatus {
         for mut event in events.drain() {
             if let Some(patch) = SteamAudioNode::patch_event(&event) {
+                if matches!(patch, SteamAudioNodePatch::Reset(..)) {
+                    self.direct_effect.reset();
+                    self.binaural_effect.reset();
+                    self.reflection_effect.reset();
+                    self.pathing_effect.reset();
+                    self.ambisonics_decode_effect.reset();
+                }
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(source) = event.downcast::<audionimbus::Source>() {

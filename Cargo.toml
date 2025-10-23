@@ -22,7 +22,7 @@ trenchbroom_steam_audio = { version = "0.1.0", path = "crates/trenchbroom_steam_
 audionimbus = { version = "0.9.0", default-features = false }
 audionimbus-sys = { version = "4.7.1-rc.1",  default-features = false }
 
-bevy_seedling = { version = "0.6.0", default-features = false }
+bevy_seedling = { version = "0.6.0", default-features = false, features = ["reflect"] }
 bevy_app = { version = "0.17", default-features = false }
 bevy_ecs = { version = "0.17", default-features = false }
 bevy_transform = { version = "0.17", default-features = false }
@@ -53,6 +53,7 @@ hashbrown = "0.16"
 ordered-float = "5"
 wildmatch = "2"
 bevy_trenchbroom = { version = "0.10.0", default-features = false }
+bevy_trenchbroom_avian = { version = "0.10.0" }
 
 bevy = { version = "0.17.0", default-features = false, features = [
   "std",
@@ -135,7 +136,6 @@ allow_attributes_without_reason = "warn"
 [patch.crates-io]
 firewheel = { git = "https://github.com/BillyDM/firewheel" }
 bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0" }
-bevy_trenchbroom = { git = "https://github.com/Noxmore/bevy_trenchbroom" }
 
 [profile.dev.package."*"]
 inherits = "dev"

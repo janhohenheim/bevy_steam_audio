@@ -1,6 +1,6 @@
 use audionimbus::AudioBuffer;
-use bevy_ecs::{lifecycle::HookContext, world::DeferredWorld};
-use bevy_seedling::{node::RegisterNode as _, prelude::*};
+use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
+use bevy_seedling::{node::RegisterNode as _, pool::Sampler, prelude::*};
 use firewheel::{
     channel_config::ChannelConfig,
     diff::{Diff, Patch, RealtimeClone},
@@ -19,6 +19,7 @@ use crate::{
 
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioReverbNode>();
+    app.add_observer(reset_reverb_node);
 }
 
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
@@ -27,6 +28,7 @@ pub struct SteamAudioReverbNode {
     pub gain: f32,
     pub previous_gain: f32,
     pub listener_position: AudionimbusCoordinateSystem,
+    pub reset: Notify<()>,
 }
 
 impl Default for SteamAudioReverbNode {
@@ -35,6 +37,7 @@ impl Default for SteamAudioReverbNode {
             gain: 1.0,
             previous_gain: 1.0,
             listener_position: default(),
+            reset: default(),
         }
     }
 }
@@ -53,6 +56,19 @@ fn on_add_steam_audio_reverb_node_config(mut world: DeferredWorld, ctx: HookCont
     let mut entity = world.entity_mut(ctx.entity);
     let mut config = entity.get_mut::<SteamAudioReverbNodeConfig>().unwrap();
     config.quality = quality;
+}
+
+fn reset_reverb_node(
+    add: On<Add, Sampler>,
+    effects: Query<&SampleEffects, Allow<Disabled>>,
+    mut node: Query<&mut SteamAudioReverbNode>,
+) -> Result {
+    let effects = effects.get(add.entity)?;
+    let Ok(mut node) = node.get_effect_mut(effects) else {
+        return Ok(());
+    };
+    node.reset.notify();
+    Ok(())
 }
 
 impl AudioNode for SteamAudioReverbNode {
@@ -144,6 +160,10 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
     ) -> ProcessStatus {
         for mut event in events.drain() {
             if let Some(patch) = SteamAudioReverbNode::patch_event(&event) {
+                if matches!(patch, SteamAudioReverbNodePatch::Reset(..)) {
+                    self.reflection_effect.reset();
+                    self.ambisonics_decode_effect.reset();
+                }
                 Patch::apply(&mut self.params, patch);
             }
             if let Some(source) = event.downcast::<audionimbus::Source>() {
@@ -274,5 +294,43 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
         } else {
             result
         }
+    }
+
+    fn new_stream(
+        &mut self,
+        stream_info: &firewheel::StreamInfo,
+        _context: &mut firewheel::node::ProcStreamCtx,
+    ) {
+        if stream_info.sample_rate.get() == stream_info.prev_sample_rate.get()
+            && stream_info.max_block_frames.get() == self.fixed_block.max_block_frames() as u32
+        {
+            return;
+        }
+
+        let settings = audionimbus::AudioSettings {
+            sampling_rate: stream_info.sample_rate.get(),
+            frame_size: self.quality.frame_size,
+        };
+        self.reflection_effect = audionimbus::ReflectionEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::ReflectionEffectSettings::Convolution {
+                impulse_response_size: self
+                    .quality
+                    .impulse_response_size(stream_info.sample_rate.into()),
+                num_channels: self.quality.num_channels(),
+            },
+        )
+        .unwrap();
+        self.ambisonics_decode_effect = audionimbus::AmbisonicsDecodeEffect::try_new(
+            &STEAM_AUDIO_CONTEXT,
+            &settings,
+            &audionimbus::AmbisonicsDecodeEffectSettings {
+                max_order: self.quality.order,
+                speaker_layout: audionimbus::SpeakerLayout::Stereo,
+                hrtf: &self.hrtf,
+            },
+        )
+        .unwrap();
     }
 }
