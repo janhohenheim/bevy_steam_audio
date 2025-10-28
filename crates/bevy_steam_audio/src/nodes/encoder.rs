@@ -217,9 +217,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 }
                 Patch::apply(&mut self.params, patch);
             }
-            if let Some(source) = event.downcast::<audionimbus::Source>() {
-                self.source = Some(source);
-            }
+            event.downcast_swap(&mut self.source);
         }
 
         // If the previous output of this node was silent, and the inputs are also silent
@@ -453,9 +451,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 pathing_effect_params.listener = listener.into();
                 pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
-                for coeff in &mut pathing_effect_params.eq_coeffs {
-                    *coeff = coeff.max(0.1);
-                }
 
                 apply_volume_ramp(
                     self.params.previous_pathing_gain,

@@ -166,9 +166,7 @@ impl AudioNodeProcessor for SteamAudioReverbNodeProcessor {
                 }
                 Patch::apply(&mut self.params, patch);
             }
-            if let Some(source) = event.downcast::<audionimbus::Source>() {
-                self.source = Some(source);
-            }
+            event.downcast_swap(&mut self.source);
         }
 
         // If the previous output of this node was silent, and the inputs are also silent

@@ -47,7 +47,7 @@ bevy_scene = { version = "0.17", default-features = false }
 avian3d = { version = "0.4", default-features = false, features = ["3d"] }
 
 itertools = "0.14.0"
-firewheel = { version = "0.8.0-rc.1", default-features = false, features = ["std"] }
+firewheel = { version = "0.9.0", default-features = false, features = ["std"] }
 crossbeam-channel = "0.5.15"
 prealloc_ref_vec = "0.1.1"
 criterion = { version = "0.7", features = ["html_reports"] }
@@ -135,10 +135,6 @@ ref_as_ptr = "warn"
 too_long_first_doc_paragraph = "allow"
 allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
-
-[patch.crates-io]
-firewheel = { git = "https://github.com/BillyDM/firewheel" }
-bevy_seedling = { git = "https://github.com/corvusprudens/bevy_seedling", branch = "v0.6.0" }
 
 [profile.dev.package."*"]
 inherits = "dev"
