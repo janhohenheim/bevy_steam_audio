@@ -9,10 +9,10 @@ publish = false
 bevy_steam_audio = { workspace = true }
 avian_steam_audio = { workspace = true }
 bevy = { workspace = true }
-bevy_seedling = { workspace = true }
+bevy_seedling = { workspace = true, default-features = true }
 avian3d = { workspace = true, default-features = true }
 bevy_trenchbroom = { workspace = true, default-features = true }
-bevy_trenchbroom_avian = { workspace = true, default-features = true }
+bevy_trenchbroom_avian = { workspace = true }
 trenchbroom_steam_audio = { workspace = true }
 
 [dev-dependencies]

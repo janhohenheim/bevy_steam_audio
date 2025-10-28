@@ -40,7 +40,7 @@ fn send_source_to_processor(
     let (source, effects) = effects.get(add.entity)?;
     let mut events = events.get_effect_mut(effects)?;
     let source: audionimbus::Source = source.0.clone();
-    events.push(NodeEventType::custom(source));
+    events.push(NodeEventType::custom(Some(source)));
     Ok(())
 }
 
@@ -50,7 +50,7 @@ fn send_source_to_reverb_processor(
 ) {
     if source.is_changed() {
         let source: audionimbus::Source = source.0.clone();
-        events.push(NodeEventType::custom(source));
+        events.push(NodeEventType::custom(Some(source)));
     }
 }
 
