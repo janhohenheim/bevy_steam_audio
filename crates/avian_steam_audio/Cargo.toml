@@ -1,5 +1,6 @@
 [package]
 name = "avian_steam_audio"
+description = "Integration between bevy_steam_audio and avian3d"
 version = "0.1.0"
 authors = { workspace = true }
 edition = { workspace = true }
