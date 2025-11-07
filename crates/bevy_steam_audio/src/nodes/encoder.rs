@@ -372,7 +372,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             let binaural_params = audionimbus::BinauralEffectParams {
                 direction,
-                interpolation: audionimbus::HrtfInterpolation::Bilinear,
+                interpolation: audionimbus::HrtfInterpolation::Nearest,
                 spatial_blend: 1.0,
                 hrtf: &self.hrtf,
                 peak_delays: None,

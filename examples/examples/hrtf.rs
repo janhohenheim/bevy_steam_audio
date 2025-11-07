@@ -36,14 +36,6 @@ fn setup(
         MeshMaterial3d(materials.add(Color::WHITE)),
     ));
 
-    // Some occluding geometry using MeshSteamAudioMaterial
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(3.0, 2.0, 0.5))),
-        MeshMaterial3d(materials.add(Color::from(tailwind::RED_700).with_alpha(0.7))),
-        Transform::from_xyz(0.0, 0.0, -1.0),
-        SteamAudioMaterial::default(),
-    ));
-
     // The sample player uses Steam Audio through the SteamAudioPool
     commands.spawn((
         SamplePlayer::new(assets.load("selfless_courage.ogg")).looping(),
@@ -82,7 +74,7 @@ fn rotate_audio(
     let horizontal_rotation = Quat::from_rotation_y(horizontal_angle);
     let vertical_rotation = Quat::from_rotation_x(max_vertical_angle * vertical_angle_frac);
 
-    let mut base_position = Transform::from_xyz(0.0, 0.0, -2.0);
+    let mut base_position = Transform::from_xyz(0.0, 0.0, -1.5);
     base_position.rotate_around(
         listener.translation,
         horizontal_rotation * vertical_rotation,
