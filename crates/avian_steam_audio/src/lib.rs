@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use avian3d::{parry::shape::Shape, prelude::*};
+use avian3d::{collision::collider::trimesh_builder::Trimesh, parry::shape::Shape, prelude::*};
 use bevy_app::prelude::*;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{entity_disabling::Disabled, prelude::*};
@@ -20,11 +20,6 @@ use bevy_steam_audio::{
 };
 use bevy_transform::prelude::*;
 use std::hash::Hash;
-use trimesh_builder::ColliderTrimeshBuilder as _;
-
-use crate::trimesh_builder::Trimesh;
-
-mod trimesh_builder;
 
 pub mod prelude {
     pub use crate::{AvianSteamAudioScenePlugin, NotSteamAudioCollider};
