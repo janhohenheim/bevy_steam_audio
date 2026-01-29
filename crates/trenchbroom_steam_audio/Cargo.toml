@@ -23,7 +23,7 @@ bevy_asset = { workspace = true }
 bevy_transform = { workspace = true }
 bevy_steam_audio = { workspace = true }
 avian_steam_audio = { workspace = true }
-bevy_trenchbroom = { workspace = true, features = ["physics-Integration"] }
+bevy_trenchbroom = { workspace = true, features = ["physics-integration"] }
 wildmatch = { workspace = true }
 avian3d = { workspace = true }
 
