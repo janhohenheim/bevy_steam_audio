@@ -20,7 +20,7 @@ readme = "readme.md"
 [workspace.dependencies]
 bevy_steam_audio = { version = "0.2", path = "crates/bevy_steam_audio" }
 avian_steam_audio = { version = "0.3.0-dev", path = "crates/avian_steam_audio" }
-trenchbroom_steam_audio = { version = "0.2", path = "crates/trenchbroom_steam_audio" }
+trenchbroom_steam_audio = { version = "0.3.0-dev", path = "crates/trenchbroom_steam_audio" }
 
 audionimbus = { version = "0.11", default-features = false }
 audionimbus-sys = { version = "4.8",  default-features = false }
@@ -56,7 +56,7 @@ hashbrown = "0.16"
 ordered-float = "5"
 wildmatch = "2"
 bevy_trenchbroom = { version = "0.12", default-features = false }
-bevy_trenchbroom_avian = { version = "0.12" }
+bevy_trenchbroom_avian = { version = "0.13.0-dev", git = "https://github.com/janhohenheim/bevy_trenchbroom", branch = "avian-0.6" }
 
 bevy = { version = "0.18", default-features = false, features = [
   "std",

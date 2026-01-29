@@ -354,35 +354,11 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "avian3d"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b82608b43397affac139547dfa9beb3208034c53e1a3cfe5d4079db1af362104"
-dependencies = [
- "approx",
- "avian_derive 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "bevy",
- "bevy_heavy",
- "bevy_math",
- "bevy_transform_interpolation",
- "bitflags 2.10.0",
- "derive_more",
- "disqualified",
- "glam_matrix_extras",
- "itertools 0.13.0",
- "nalgebra",
- "parry3d",
- "slab",
- "smallvec",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "avian3d"
 version = "0.6.0-dev"
 source = "git+https://github.com/avianphysics/avian#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
 dependencies = [
  "approx",
- "avian_derive 0.2.2 (git+https://github.com/avianphysics/avian)",
+ "avian_derive",
  "bevy",
  "bevy_heavy",
  "bevy_math",
@@ -404,18 +380,6 @@ dependencies = [
 [[package]]
 name = "avian_derive"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12b257f601a1535e0d4a7a7796f535e3a13de62fd422b16dff7c14d27f0d4048"
-dependencies = [
- "proc-macro-error2",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "avian_derive"
-version = "0.2.2"
 source = "git+https://github.com/avianphysics/avian#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
 dependencies = [
  "proc-macro-error2",
@@ -429,7 +393,7 @@ name = "avian_steam_audio"
 version = "0.3.0-dev"
 dependencies = [
  "audionimbus",
- "avian3d 0.6.0-dev",
+ "avian3d",
  "bevy_app",
  "bevy_asset",
  "bevy_camera",
@@ -1680,7 +1644,37 @@ dependencies = [
  "bevy_materialize",
  "bevy_mesh",
  "bevy_reflect",
- "bevy_trenchbroom_macros",
+ "bevy_trenchbroom_macros 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytemuck",
+ "default-struct-builder",
+ "disjoint-sets",
+ "enumflags2",
+ "float-ord",
+ "image",
+ "itertools 0.14.0",
+ "json",
+ "ndshape",
+ "nil",
+ "quake-util",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.18",
+ "wgpu-types",
+]
+
+[[package]]
+name = "bevy_trenchbroom"
+version = "0.12.0"
+source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#dd52cf42f8b02800605f6c08ab0ea635b46103c8"
+dependencies = [
+ "anyhow",
+ "atomicow",
+ "bevy",
+ "bevy_materialize",
+ "bevy_mesh",
+ "bevy_reflect",
+ "bevy_trenchbroom_macros 0.12.0 (git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6)",
  "bytemuck",
  "default-struct-builder",
  "disjoint-sets",
@@ -1701,13 +1695,12 @@ dependencies = [
 
 [[package]]
 name = "bevy_trenchbroom_avian"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2afaa2bc3410229675759485df5c2edf44e38b491b19696ea404702fdb9e59f9"
+version = "0.13.0-dev"
+source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#dd52cf42f8b02800605f6c08ab0ea635b46103c8"
 dependencies = [
- "avian3d 0.5.0",
+ "avian3d",
  "bevy",
- "bevy_trenchbroom",
+ "bevy_trenchbroom 0.12.0 (git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6)",
 ]
 
 [[package]]
@@ -1715,6 +1708,18 @@ name = "bevy_trenchbroom_macros"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ca5ac0e5786d35123f928408e11a8824355b9585310c24bb5abed18a4fc3358"
+dependencies = [
+ "deluxe",
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "bevy_trenchbroom_macros"
+version = "0.12.0"
+source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#dd52cf42f8b02800605f6c08ab0ea635b46103c8"
 dependencies = [
  "deluxe",
  "heck 0.5.0",
@@ -5618,12 +5623,12 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "steam_audio_examples"
 version = "0.1.0"
 dependencies = [
- "avian3d 0.6.0-dev",
+ "avian3d",
  "avian_steam_audio",
  "bevy",
  "bevy_seedling",
  "bevy_steam_audio",
- "bevy_trenchbroom",
+ "bevy_trenchbroom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bevy_trenchbroom_avian",
  "criterion",
  "trenchbroom_steam_audio",
@@ -6123,9 +6128,9 @@ dependencies = [
 
 [[package]]
 name = "trenchbroom_steam_audio"
-version = "0.2.0"
+version = "0.3.0-dev"
 dependencies = [
- "avian3d 0.6.0-dev",
+ "avian3d",
  "avian_steam_audio",
  "bevy_app",
  "bevy_asset",
@@ -6134,7 +6139,7 @@ dependencies = [
  "bevy_scene",
  "bevy_steam_audio",
  "bevy_transform",
- "bevy_trenchbroom",
+ "bevy_trenchbroom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wildmatch",
 ]
 
