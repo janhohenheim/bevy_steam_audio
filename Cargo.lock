@@ -1635,37 +1635,6 @@ dependencies = [
 [[package]]
 name = "bevy_trenchbroom"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e33fa8430c0d006f22d9ef9b03f3cb4658faa4f71d1a6d7593d9c62308b3871b"
-dependencies = [
- "anyhow",
- "atomicow",
- "bevy",
- "bevy_materialize",
- "bevy_mesh",
- "bevy_reflect",
- "bevy_trenchbroom_macros 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bytemuck",
- "default-struct-builder",
- "disjoint-sets",
- "enumflags2",
- "float-ord",
- "image",
- "itertools 0.14.0",
- "json",
- "ndshape",
- "nil",
- "quake-util",
- "serde",
- "serde_json",
- "strum",
- "thiserror 2.0.18",
- "wgpu-types",
-]
-
-[[package]]
-name = "bevy_trenchbroom"
-version = "0.12.0"
 source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#dd52cf42f8b02800605f6c08ab0ea635b46103c8"
 dependencies = [
  "anyhow",
@@ -1674,7 +1643,7 @@ dependencies = [
  "bevy_materialize",
  "bevy_mesh",
  "bevy_reflect",
- "bevy_trenchbroom_macros 0.12.0 (git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6)",
+ "bevy_trenchbroom_macros",
  "bytemuck",
  "default-struct-builder",
  "disjoint-sets",
@@ -1700,20 +1669,7 @@ source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#
 dependencies = [
  "avian3d",
  "bevy",
- "bevy_trenchbroom 0.12.0 (git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6)",
-]
-
-[[package]]
-name = "bevy_trenchbroom_macros"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ca5ac0e5786d35123f928408e11a8824355b9585310c24bb5abed18a4fc3358"
-dependencies = [
- "deluxe",
- "heck 0.5.0",
- "proc-macro2",
- "quote",
- "syn",
+ "bevy_trenchbroom",
 ]
 
 [[package]]
@@ -5628,7 +5584,7 @@ dependencies = [
  "bevy",
  "bevy_seedling",
  "bevy_steam_audio",
- "bevy_trenchbroom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bevy_trenchbroom",
  "bevy_trenchbroom_avian",
  "criterion",
  "trenchbroom_steam_audio",
@@ -6139,7 +6095,7 @@ dependencies = [
  "bevy_scene",
  "bevy_steam_audio",
  "bevy_transform",
- "bevy_trenchbroom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bevy_trenchbroom",
  "wildmatch",
 ]
 

@@ -55,7 +55,7 @@ thiserror = "2"
 hashbrown = "0.16"
 ordered-float = "5"
 wildmatch = "2"
-bevy_trenchbroom = { version = "0.12", default-features = false }
+bevy_trenchbroom = { version = "0.12", default-features = false, git = "https://github.com/janhohenheim/bevy_trenchbroom", branch = "avian-0.6" }
 bevy_trenchbroom_avian = { version = "0.13.0-dev", git = "https://github.com/janhohenheim/bevy_trenchbroom", branch = "avian-0.6" }
 
 bevy = { version = "0.18", default-features = false, features = [
