@@ -19,7 +19,7 @@ readme = "readme.md"
 
 [workspace.dependencies]
 bevy_steam_audio = { version = "0.2", path = "crates/bevy_steam_audio" }
-avian_steam_audio = { version = "0.2", path = "crates/avian_steam_audio" }
+avian_steam_audio = { version = "0.3.0-dev", path = "crates/avian_steam_audio" }
 trenchbroom_steam_audio = { version = "0.2", path = "crates/trenchbroom_steam_audio" }
 
 audionimbus = { version = "0.11", default-features = false }
@@ -44,7 +44,7 @@ bevy_gizmos = { version = "0.18", default-features = false }
 bevy_color = { version = "0.18", default-features = false }
 bevy_scene = { version = "0.18", default-features = false }
 
-avian3d = { version = "0.5", default-features = false, features = ["3d"] }
+avian3d = { version = "0.6.0-dev", default-features = false, features = ["3d"], git = "https://github.com/avianphysics/avian" }
 
 itertools = "0.14"
 firewheel = { version = "0.10", default-features = false, features = ["std"] }
