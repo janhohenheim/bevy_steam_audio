@@ -23,8 +23,8 @@ fn main() {
             TrenchBroomPlugins(
                 TrenchBroomConfig::new("trenchbroom_steam_audio demo")
                     .assets_path("examples/assets")
-                    .default_solid_spawn_hooks(|| {
-                        SpawnHooks::new()
+                    .default_solid_scene_hooks(|| {
+                        SceneHooks::new()
                             .convex_collider()
                             .smooth_by_default_angle()
                     }),

@@ -174,9 +174,10 @@ fn create_simulator(
         audionimbus::SceneParams::Default,
         create.sampling_rate.into(),
         quality.frame_size,
+        quality.order,
     )
     .with_direct(quality.direct.into())
-    .with_reflections(quality.reflections.to_audionimbus(quality.order))
+    .with_reflections(quality.reflections.to_audionimbus())
     .with_pathing(quality.pathing.into())
     .try_build(&STEAM_AUDIO_CONTEXT)?;
     simulator.set_scene(&root);

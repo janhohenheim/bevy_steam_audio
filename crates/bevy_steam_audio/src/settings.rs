@@ -125,17 +125,13 @@ impl From<SteamAudioReflectionKind> for audionimbus::ReflectionEffectType {
 }
 
 impl SteamAudioReflectionsQuality {
-    pub(crate) fn to_audionimbus(
-        self,
-        order: u32,
-    ) -> audionimbus::ReflectionsSimulationSettings<'static> {
+    pub(crate) fn to_audionimbus(self) -> audionimbus::ReflectionsSimulationSettings<'static> {
         match self.kind {
             SteamAudioReflectionKind::Convolution => {
                 audionimbus::ReflectionsSimulationSettings::Convolution {
                     max_num_rays: self.num_rays,
                     num_diffuse_samples: self.num_diffuse_samples,
                     max_duration: self.impulse_duration.as_secs_f32(),
-                    max_order: order,
                     max_num_sources: self.max_num_sources,
                     num_threads: self.num_threads,
                 }
@@ -145,7 +141,6 @@ impl SteamAudioReflectionsQuality {
                     max_num_rays: self.num_rays,
                     num_diffuse_samples: self.num_diffuse_samples,
                     max_duration: self.impulse_duration.as_secs_f32(),
-                    max_order: order,
                     max_num_sources: self.max_num_sources,
                     num_threads: self.num_threads,
                 }
@@ -155,7 +150,6 @@ impl SteamAudioReflectionsQuality {
                     max_num_rays: self.num_rays,
                     num_diffuse_samples: self.num_diffuse_samples,
                     max_duration: self.impulse_duration.as_secs_f32(),
-                    max_order: order,
                     max_num_sources: self.max_num_sources,
                     num_threads: self.num_threads,
                 }

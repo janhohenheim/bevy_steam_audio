@@ -18,51 +18,51 @@ categories = ["game-development"]
 readme = "readme.md"
 
 [workspace.dependencies]
-bevy_steam_audio = { version = "0.1.0", path = "crates/bevy_steam_audio" }
-avian_steam_audio = { version = "0.1.0", path = "crates/avian_steam_audio" }
-trenchbroom_steam_audio = { version = "0.1.0", path = "crates/trenchbroom_steam_audio" }
+bevy_steam_audio = { version = "0.2", path = "crates/bevy_steam_audio" }
+avian_steam_audio = { version = "0.2", path = "crates/avian_steam_audio" }
+trenchbroom_steam_audio = { version = "0.2", path = "crates/trenchbroom_steam_audio" }
 
-audionimbus = { version = "0.9.0", default-features = false }
-audionimbus-sys = { version = "4.7.1-rc.1",  default-features = false }
+audionimbus = { version = "0.11", default-features = false }
+audionimbus-sys = { version = "4.8",  default-features = false }
 
-bevy_seedling = { version = "0.6.0", default-features = false, features = ["reflect"] }
-bevy_app = { version = "0.17", default-features = false }
-bevy_ecs = { version = "0.17", default-features = false }
-bevy_transform = { version = "0.17", default-features = false }
-bevy_math = { version = "0.17", default-features = false }
-bevy_utils = { version = "0.17", default-features = false }
-bevy_log = { version = "0.17", default-features = false }
-bevy_reflect = { version = "0.17", default-features = false }
-bevy_derive = { version = "0.17", default-features = false }
-bevy_platform = { version = "0.17", default-features = false }
-bevy_asset = { version = "0.17", default-features = false }
-bevy_mesh = { version = "0.17", default-features = false }
-bevy_time = { version = "0.17", default-features = false }
-bevy_tasks = { version = "0.17", default-features = false }
-bevy_camera = { version = "0.17", default-features = false }
-bevy_gizmos = { version = "0.17", default-features = false }
-bevy_color = { version = "0.17", default-features = false }
-bevy_scene = { version = "0.17", default-features = false }
+bevy_seedling = { version = "0.7", default-features = false, features = ["reflect"] }
+bevy_app = { version = "0.18", default-features = false }
+bevy_ecs = { version = "0.18", default-features = false }
+bevy_transform = { version = "0.18", default-features = false }
+bevy_math = { version = "0.18", default-features = false }
+bevy_utils = { version = "0.18", default-features = false }
+bevy_log = { version = "0.18", default-features = false }
+bevy_reflect = { version = "0.18", default-features = false }
+bevy_derive = { version = "0.18", default-features = false }
+bevy_platform = { version = "0.18", default-features = false }
+bevy_asset = { version = "0.18", default-features = false }
+bevy_mesh = { version = "0.18", default-features = false }
+bevy_time = { version = "0.18", default-features = false }
+bevy_tasks = { version = "0.18", default-features = false }
+bevy_camera = { version = "0.18", default-features = false }
+bevy_gizmos = { version = "0.18", default-features = false }
+bevy_color = { version = "0.18", default-features = false }
+bevy_scene = { version = "0.18", default-features = false }
 
-avian3d = { version = "0.4", default-features = false, features = ["3d"] }
+avian3d = { version = "0.5", default-features = false, features = ["3d"] }
 
-itertools = "0.14.0"
-firewheel = { version = "0.9.0", default-features = false, features = ["std"] }
+itertools = "0.14"
+firewheel = { version = "0.10", default-features = false, features = ["std"] }
 crossbeam-channel = "0.5.15"
-prealloc_ref_vec = "0.1.1"
+prealloc_ref_vec = "0.1"
 criterion = { version = "0.7", features = ["html_reports"] }
 thiserror = "2"
 hashbrown = "0.16"
 ordered-float = "5"
 wildmatch = "2"
-bevy_trenchbroom = { version = "0.10.0", default-features = false }
-bevy_trenchbroom_avian = { version = "0.10.0" }
+bevy_trenchbroom = { version = "0.12", default-features = false }
+bevy_trenchbroom_avian = { version = "0.12" }
 
-bevy = { version = "0.17.0", default-features = false, features = [
+bevy = { version = "0.18", default-features = false, features = [
   "std",
   "async_executor",
   "android-game-activity",
-  "animation",
+  "gltf_animation",
   "bevy_asset",
   "bevy_color",
   "bevy_core_pipeline",
@@ -73,7 +73,7 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "bevy_gltf",
   "bevy_input_focus",
   "bevy_log",
-  "bevy_mesh_picking_backend",
+  "mesh_picking",
   "bevy_pbr",
   "bevy_picking",
   "bevy_render",
@@ -84,12 +84,12 @@ bevy = { version = "0.17.0", default-features = false, features = [
   "bevy_light",
   "bevy_shader",
   "bevy_sprite",
-  "bevy_sprite_picking_backend",
+  "sprite_picking",
   "bevy_sprite_render",
   "bevy_state",
   "bevy_text",
   "bevy_ui",
-  "bevy_ui_picking_backend",
+  "ui_picking",
   "bevy_ui_render",
   "bevy_window",
   "bevy_winit",
