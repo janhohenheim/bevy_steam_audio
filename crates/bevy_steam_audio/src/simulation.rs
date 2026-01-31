@@ -117,14 +117,16 @@ fn recreate_simulator_on_settings_change(
     mut commands: Commands,
     mut prev_quality: Local<Option<SteamAudioQuality>>,
 ) {
-    let Some(prev_quality) = *prev_quality else {
+    let Some(prev_quality_value) = *prev_quality else {
         *prev_quality = Some(*quality);
         return;
     };
 
-    if !quality.is_changed() && prev_quality == *quality {
+    if !quality.is_changed() && prev_quality_value == *quality {
         return;
     }
+
+    *prev_quality = Some(*quality);
 
     commands.trigger(CreateSimulator {
         sampling_rate: simulator.sampling_rate,
