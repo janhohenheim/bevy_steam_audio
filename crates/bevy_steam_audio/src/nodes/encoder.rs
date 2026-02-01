@@ -82,13 +82,12 @@ fn reset_steam_audio_node(
     add: On<Add, Sampler>,
     effects: Query<&SampleEffects, Allow<Disabled>>,
     mut node: Query<&mut SteamAudioNode>,
-) -> Result {
-    let effects = effects.get(add.entity)?;
-    let Ok(mut node) = node.get_effect_mut(effects) else {
-        return Ok(());
-    };
-    node.reset.notify();
-    Ok(())
+) {
+    if let Ok(effects) = effects.get(add.entity)
+        && let Ok(mut node) = node.get_effect_mut(effects)
+    {
+        node.reset.notify();
+    }
 }
 
 impl AudioNode for SteamAudioNode {
