@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "avian_steam_audio"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 dependencies = [
  "audionimbus",
  "avian3d",
@@ -6099,7 +6099,7 @@ dependencies = [
 
 [[package]]
 name = "trenchbroom_steam_audio"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 dependencies = [
  "avian3d",
  "avian_steam_audio",
