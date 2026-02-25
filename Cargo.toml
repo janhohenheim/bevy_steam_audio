@@ -18,7 +18,7 @@ categories = ["game-development"]
 readme = "readme.md"
 
 [workspace.dependencies]
-bevy_steam_audio = { version = "0.2", path = "crates/bevy_steam_audio" }
+bevy_steam_audio = { version = "0.3.0-rc.1", path = "crates/bevy_steam_audio" }
 avian_steam_audio = { version = "0.3.0-rc.1", path = "crates/avian_steam_audio" }
 trenchbroom_steam_audio = { version = "0.3.0-rc.1", path = "crates/trenchbroom_steam_audio" }
 

@@ -1,7 +1,7 @@
 [package]
 name = "bevy_steam_audio"
 description = "Integration between bevy_seedling and Steam Audio over audionimbus"
-version = "0.2.0"
+version = "0.3.0-rc.1"
 authors = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
