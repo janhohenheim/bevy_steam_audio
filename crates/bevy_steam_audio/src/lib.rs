@@ -107,5 +107,6 @@ pub enum SteamAudioSystems {
 pub struct SteamAudioListener;
 
 pub static STEAM_AUDIO_CONTEXT: LazyLock<audionimbus::Context> = LazyLock::new(|| {
-    audionimbus::Context::try_new(&audionimbus::ContextSettings::default()).unwrap()
+    audionimbus::Context::try_new(&audionimbus::ContextSettings::default())
+        .expect("Failed to create Steam Audio context")
 });

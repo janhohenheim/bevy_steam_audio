@@ -11,7 +11,7 @@ categories = { workspace = true }
 readme = { workspace = true }
 
 [features]
-default = ["debug"]
+default = ["debug", "auto-install"]
 auto-install = ["audionimbus/auto-install"]
 debug = ["dep:bevy_gizmos", "dep:bevy_color"]
 
