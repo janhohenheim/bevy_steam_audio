@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "avian_steam_audio"
-version = "0.3.0-rc.2"
+version = "0.3.0-rc.3"
 dependencies = [
  "audionimbus",
  "avian3d",

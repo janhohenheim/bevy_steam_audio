@@ -19,8 +19,8 @@ readme = "readme.md"
 
 [workspace.dependencies]
 bevy_steam_audio = { version = "0.3.0-rc.1", path = "crates/bevy_steam_audio" }
-avian_steam_audio = { version = "0.3.0-rc.1", path = "crates/avian_steam_audio" }
-trenchbroom_steam_audio = { version = "0.3.0-rc.1", path = "crates/trenchbroom_steam_audio" }
+avian_steam_audio = { version = "0.3.0-rc.3", path = "crates/avian_steam_audio" }
+trenchbroom_steam_audio = { version = "0.3.0-rc.2", path = "crates/trenchbroom_steam_audio" }
 
 audionimbus = { version = "0.11", default-features = false }
 audionimbus-sys = { version = "4.8",  default-features = false }
