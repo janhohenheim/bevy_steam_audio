@@ -114,18 +114,8 @@ pub enum SteamAudioReflectionKind {
     Hybrid,
 }
 
-impl From<SteamAudioReflectionKind> for audionimbus::ReflectionEffectType {
-    fn from(kind: SteamAudioReflectionKind) -> Self {
-        match kind {
-            SteamAudioReflectionKind::Convolution => audionimbus::ReflectionEffectType::Convolution,
-            SteamAudioReflectionKind::Parametric => audionimbus::ReflectionEffectType::Parametric,
-            SteamAudioReflectionKind::Hybrid => audionimbus::ReflectionEffectType::Hybrid,
-        }
-    }
-}
-
 impl SteamAudioReflectionsQuality {
-    pub(crate) fn to_audionimbus(self) -> audionimbus::ReflectionsSimulationSettings<'static> {
+    pub(crate) fn to_audionimbus(&self) -> audionimbus::ReflectionsSimulationSettings<'static> {
         match self.kind {
             SteamAudioReflectionKind::Convolution => {
                 audionimbus::ReflectionsSimulationSettings::Convolution {
@@ -180,16 +170,16 @@ impl SteamAudioQuality {
     pub(crate) fn to_audionimbus_simulation_shared_inputs(
         self,
         listener_position: AudionimbusCoordinateSystem,
-    ) -> audionimbus::SimulationSharedInputs {
-        audionimbus::SimulationSharedInputs {
-            num_rays: self.reflections.num_rays,
-            num_bounces: self.num_bounces,
-            duration: self.reflections.impulse_duration.as_secs_f32(),
-            irradiance_min_distance: self.irradiance_min_distance,
-            listener: listener_position.into(),
-            order: self.order,
-            pathing_visualization_callback: None,
-        }
+    ) -> audionimbus::SimulationSharedInputs<(), audionimbus::Reflections, ()> {
+        audionimbus::SimulationSharedInputs::new(listener_position.into()).with_reflections(
+            audionimbus::ReflectionsSharedInputs {
+                num_rays: self.reflections.num_rays,
+                num_bounces: self.num_bounces,
+                duration: self.reflections.impulse_duration.as_secs_f32(),
+                order: self.order,
+                irradiance_min_distance: self.irradiance_min_distance,
+            },
+        )
     }
 
     pub(crate) fn impulse_response_size(self, sampling_rate: u32) -> u32 {

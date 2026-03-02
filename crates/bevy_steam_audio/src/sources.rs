@@ -7,6 +7,20 @@ use firewheel::{diff::EventQueue as _, event::NodeEventType};
 
 use crate::{prelude::*, simulation::AudionimbusSimulator};
 
+pub type AudioSourceInner = audionimbus::Source<
+    'static,
+    audionimbus::Direct,
+    audionimbus::Reflections,
+    audionimbus::Pathing,
+>;
+
+pub type ListenerSourceInner = audionimbus::Source<
+    'static,
+    audionimbus::Direct,
+    audionimbus::Reflections,
+    audionimbus::Pathing,
+>;
+
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<ToSetup>()
         .init_resource::<SourcesToRemove>();
@@ -26,11 +40,11 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct ListenerSource(pub(crate) audionimbus::Source);
+pub struct ListenerSource(pub(crate) ListenerSourceInner);
 
 #[derive(Component, Deref, DerefMut)]
 #[require(Transform, GlobalTransform)]
-pub struct AudionimbusSource(pub(crate) audionimbus::Source);
+pub struct AudionimbusSource(pub(crate) AudioSourceInner);
 
 fn send_source_to_processor(
     add: On<Add, AudionimbusSource>,
@@ -39,7 +53,7 @@ fn send_source_to_processor(
 ) -> Result {
     let (source, effects) = effects.get(add.entity)?;
     let mut events = events.get_effect_mut(effects)?;
-    let source: audionimbus::Source = source.0.clone();
+    let source: AudioSourceInner = source.0.clone();
     events.push(NodeEventType::custom(Some(source)));
     Ok(())
 }
@@ -49,7 +63,7 @@ fn send_source_to_reverb_processor(
     mut events: Single<&mut AudioEvents, With<SteamAudioReverbNode>>,
 ) {
     if source.is_changed() {
-        let source: audionimbus::Source = source.0.clone();
+        let source: ListenerSourceInner = source.0.clone();
         events.push(NodeEventType::custom(Some(source)));
     }
 }
@@ -130,7 +144,7 @@ fn remove_steam_audio_source(
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-pub(crate) struct SourcesToRemove(pub(crate) Vec<audionimbus::Source>);
+pub(crate) struct SourcesToRemove(pub(crate) Vec<AudioSourceInner>);
 
 fn drain_to_remove(
     mut to_remove: ResMut<SourcesToRemove>,

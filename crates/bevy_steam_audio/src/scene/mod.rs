@@ -16,15 +16,11 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct SteamAudioRootScene(pub audionimbus::Scene);
+pub struct SteamAudioRootScene(pub audionimbus::Scene<'static, audionimbus::DefaultRayTracer>);
 
 impl Default for SteamAudioRootScene {
     fn default() -> Self {
-        let mut scene = audionimbus::Scene::try_new(
-            &STEAM_AUDIO_CONTEXT,
-            &audionimbus::SceneSettings::default(),
-        )
-        .unwrap();
+        let mut scene = audionimbus::Scene::try_new(&STEAM_AUDIO_CONTEXT).unwrap();
         scene.commit();
         Self(scene)
     }
@@ -34,11 +30,13 @@ impl Default for SteamAudioRootScene {
 #[reflect(Component)]
 pub struct Static;
 
+/// Stores the handle returned by `Scene::add_instanced_mesh`.
 #[derive(Component)]
-pub struct SteamAudioInstancedMesh(pub audionimbus::InstancedMesh);
+pub struct SteamAudioInstancedMesh(pub audionimbus::InstancedMeshHandle);
 
+/// Stores the handle returned by `Scene::add_static_mesh`.
 #[derive(Component)]
-pub struct SteamAudioStaticMesh(pub audionimbus::StaticMesh);
+pub struct SteamAudioStaticMesh(pub audionimbus::StaticMeshHandle);
 
 fn remove_material(remove: On<Remove, SteamAudioMaterial>, mut commands: Commands) {
     commands
@@ -52,9 +50,8 @@ fn remove_dynamic_mesh_from_scene(
     instanced_mesh: Query<&SteamAudioInstancedMesh, Allow<Disabled>>,
     mut root: ResMut<SteamAudioRootScene>,
 ) -> Result {
-    let instanced_mesh = instanced_mesh.get(remove.entity)?;
-    // replace runs *before* the actual replace, so let's remove the *old* mesh
-    root.remove_instanced_mesh(&instanced_mesh.0);
+    let handle = instanced_mesh.get(remove.entity)?;
+    root.0.remove_instanced_mesh(handle.0);
     Ok(())
 }
 
@@ -63,9 +60,8 @@ fn remove_static_mesh_from_scene(
     static_mesh: Query<&SteamAudioStaticMesh, Allow<Disabled>>,
     mut root: ResMut<SteamAudioRootScene>,
 ) -> Result {
-    let static_mesh = static_mesh.get(remove.entity)?;
-    // replace runs *before* the actual replace, so let's remove the *old* mesh
-    root.remove_static_mesh(&static_mesh.0);
+    let handle = static_mesh.get(remove.entity)?;
+    root.0.remove_static_mesh(handle.0);
     Ok(())
 }
 
@@ -73,13 +69,12 @@ fn update_transforms(
     transforms: Query<(Ref<GlobalTransform>, &SteamAudioInstancedMesh)>,
     mut root: ResMut<SteamAudioRootScene>,
 ) {
-    for (transform, instanced_mesh) in transforms.iter() {
+    for (transform, handle) in transforms.iter() {
         if !transform.is_changed() {
             continue;
         }
         let transform = transform.to_steam_audio_transform();
-
-        root.update_instanced_mesh_transform(&instanced_mesh.0, transform);
+        root.0.update_instanced_mesh_transform(handle.0, transform);
     }
 }
 

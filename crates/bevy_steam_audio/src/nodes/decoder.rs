@@ -120,6 +120,7 @@ impl AudioNode for AmbisonicDecodeNode {
                     max_order: config.order.unwrap(),
                     speaker_layout: audionimbus::SpeakerLayout::Stereo,
                     hrtf: &hrtf,
+                    rendering: audionimbus::Rendering::Binaural,
                 },
             )
             .unwrap(),
@@ -216,7 +217,6 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
                 order: self.order,
                 hrtf: &self.hrtf,
                 orientation: self.params.listener_orientation.into(),
-                binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
                 &ambisonics_decode_effect_params,
@@ -259,6 +259,7 @@ impl AudioNodeProcessor for SteamAudioDecodeProcessor {
                 max_order: self.order,
                 speaker_layout: audionimbus::SpeakerLayout::Stereo,
                 hrtf: &hrtf,
+                rendering: audionimbus::Rendering::Binaural,
             },
         )
         .unwrap();
