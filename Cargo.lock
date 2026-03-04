@@ -334,19 +334,13 @@ dependencies = [
 
 [[package]]
 name = "audionimbus"
-version = "0.12.0"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce5feca120d06492f750cab79c22fb60b8857f96adbe2c87637cdd3c44198e90"
 dependencies = [
- "audionimbus-sys 4.8.1",
+ "audionimbus-sys",
  "bitflags 2.11.0",
  "slotmap",
-]
-
-[[package]]
-name = "audionimbus-sys"
-version = "4.8.1"
-dependencies = [
- "bindgen",
- "zip",
 ]
 
 [[package]]
@@ -356,6 +350,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "111aaefa0bd5af1de99eae6baff76fd3a98bee1d458fc23cc6c3da4a284e8722"
 dependencies = [
  "bindgen",
+ "zip",
 ]
 
 [[package]]
@@ -1534,7 +1529,7 @@ name = "bevy_steam_audio"
 version = "0.3.0-rc.1"
 dependencies = [
  "audionimbus",
- "audionimbus-sys 4.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "audionimbus-sys",
  "bevy_app",
  "bevy_asset",
  "bevy_camera",
