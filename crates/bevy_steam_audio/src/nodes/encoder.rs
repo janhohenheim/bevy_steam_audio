@@ -26,7 +26,7 @@ use firewheel::{
 
 pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioNode>();
-    app.add_observer(reset_steam_audio_node);
+    app.add_observer(init_steam_audio_node);
 }
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
@@ -78,15 +78,28 @@ fn on_add_steam_audio_node_config(mut world: DeferredWorld, ctx: HookContext) {
     config.quality = quality;
 }
 
-fn reset_steam_audio_node(
+fn init_steam_audio_node(
     add: On<Add, Sampler>,
     effects: Query<&SampleEffects, Allow<Disabled>>,
+    transforms: Query<(&Transform, Option<&ChildOf>), Allow<Disabled>>,
+    parents: Query<&GlobalTransform, Allow<Disabled>>,
+    listener: Query<&GlobalTransform, With<SteamAudioListener>>,
     mut node: Query<&mut SteamAudioNode>,
 ) {
     if let Ok(effects) = effects.get(add.entity)
         && let Ok(mut node) = node.get_effect_mut(effects)
     {
         node.reset.notify();
+        if let Ok((transform, child_of)) = transforms.get(add.entity) {
+            let source = match child_of.and_then(|child_of| parents.get(child_of.parent()).ok()) {
+                Some(parent) => parent.mul_transform(*transform),
+                None => GlobalTransform::from(*transform),
+            };
+            node.source_position = source.compute_transform().into();
+        }
+        if let Ok(listener) = listener.single() {
+            node.listener_position = listener.compute_transform().into();
+        }
     }
 }
 
