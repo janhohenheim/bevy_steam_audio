@@ -18,7 +18,7 @@ use crate::{
     settings::{
         SteamAudioEnabled, SteamAudioHrtf, SteamAudioPathBakingSettings, SteamAudioQuality,
     },
-    sources::{AudionimbusSource, ListenerSource, SourcesToRemove},
+    sources::{AudionimbusSource, ListenerSource, ListenerSourceInner, SourcesToRemove},
 };
 
 use bevy_seedling::{
@@ -31,7 +31,7 @@ use crate::wrapper::*;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        (recreate_simulator_on_settings_change)
+        recreate_simulator_on_settings_change
             .in_set(SteamAudioSystems::CreateSimulator)
             .run_if(resource_exists::<AudionimbusSimulator>),
     );
@@ -58,35 +58,29 @@ struct AsyncSimulationSynchronization {
     complete: Arc<AtomicBool>,
 }
 
+type InnerSimulator = audionimbus::Simulator<
+    'static,
+    audionimbus::DefaultRayTracer,
+    audionimbus::Direct,
+    audionimbus::Reflections,
+    audionimbus::Pathing,
+>;
+
 #[derive(Resource)]
 pub struct AudionimbusSimulator {
-    simulator: Arc<
-        RwLock<
-            audionimbus::Simulator<
-                audionimbus::Direct,
-                audionimbus::Reflections,
-                audionimbus::Pathing,
-            >,
-        >,
-    >,
+    simulator: Arc<RwLock<InnerSimulator>>,
     pub sampling_rate: NonZeroU32,
+    /// A permanently empty probe batch used as a placeholder for `set_inputs` calls when no real
+    /// probes have been generated yet.
+    fallback_probe_batch: audionimbus::ProbeBatch,
 }
+
 impl AudionimbusSimulator {
     /// Used to force consumers to only ever use `ResMut` and not `Res`,
     /// as running two things simultaneously on the underlying Steam Audio simulator
     /// needs to be carefully managed, even when using `.read()`. E.g. it's easy to accidentally
     /// have two systems adding a source to the same simulator in parallel if this was used with `Res`.
-    pub fn get(
-        &mut self,
-    ) -> &Arc<
-        RwLock<
-            audionimbus::Simulator<
-                audionimbus::Direct,
-                audionimbus::Reflections,
-                audionimbus::Pathing,
-            >,
-        >,
-    > {
+    pub fn get(&mut self) -> &Arc<RwLock<InnerSimulator>> {
         &self.simulator
     }
 }
@@ -156,56 +150,62 @@ fn create_simulator(
         },
     )
     .unwrap();
+
     for mut node_config in nodes.iter_mut() {
         *node_config = SteamAudioNodeConfig {
             quality: *quality,
             hrtf: Some(hrtf.clone()),
-        }
+        };
     }
     for mut reverb_node_config in reverb_nodes.iter_mut() {
         *reverb_node_config = SteamAudioReverbNodeConfig {
             quality: *quality,
             hrtf: Some(hrtf.clone()),
-        }
+        };
     }
     commands.insert_resource(SteamAudioHrtf(hrtf));
     // All sources to be removed are already removed by despawning the old simulator
     commands.insert_resource(SourcesToRemove::default());
 
-    let mut simulator = audionimbus::Simulator::builder(
-        audionimbus::SceneParams::Default,
+    let simulator_settings = audionimbus::SimulationSettings::new(
         create.sampling_rate.into(),
         quality.frame_size,
         quality.order,
     )
     .with_direct(quality.direct.into())
     .with_reflections(quality.reflections.to_audionimbus())
-    .with_pathing(quality.pathing.into())
-    .try_build(&STEAM_AUDIO_CONTEXT)?;
-    simulator.set_scene(&root);
+    .with_pathing(quality.pathing.into());
 
-    let listener_source = audionimbus::Source::try_new(
+    let mut simulator = audionimbus::Simulator::try_new(&STEAM_AUDIO_CONTEXT, &simulator_settings)?;
+    simulator.set_scene(&root.0);
+
+    let listener_source: ListenerSourceInner = audionimbus::Source::try_new(
         &simulator,
         &audionimbus::SourceSettings {
-            flags: audionimbus::SimulationFlags::REFLECTIONS,
+            flags: audionimbus::SimulationFlags::REFLECTIONS
+                | audionimbus::SimulationFlags::PATHING,
         },
     )?;
     simulator.add_source(&listener_source);
 
     for source in &sources {
-        simulator.add_source(source);
+        simulator.add_source(&source.0);
     }
     if let Some(probe_batch) = probe_batch {
-        simulator.add_probe_batch(&probe_batch);
+        simulator.add_probe_batch(&probe_batch.0);
     }
 
     simulator.commit();
 
-    let simulator = Arc::new(RwLock::new(simulator.clone()));
+    // Empty fallback batch
+    let fallback_probe_batch = audionimbus::ProbeBatch::try_new(&STEAM_AUDIO_CONTEXT)?;
+
+    let simulator_arc = Arc::new(RwLock::new(simulator));
     commands.insert_resource(ListenerSource(listener_source));
     commands.insert_resource(AudionimbusSimulator {
-        simulator: simulator.clone(),
+        simulator: simulator_arc.clone(),
         sampling_rate: create.sampling_rate,
+        fallback_probe_batch,
     });
 
     let simulation_complete = Arc::new(AtomicBool::new(false));
@@ -220,9 +220,9 @@ fn create_simulator(
         loop {
             {
                 // Block thread until simulator is ready
-                let simulator = simulator.read().unwrap();
-                simulator.run_reflections();
-                simulator.run_pathing();
+                let simulator = simulator_arc.read().unwrap();
+                let _ = simulator.run_reflections();
+                let _ = simulator.run_pathing();
             }
 
             simulation_complete_inner.store(true, Ordering::Relaxed);
@@ -238,9 +238,48 @@ fn create_simulator(
     Ok(())
 }
 
+/// Builds the direct simulation parameters used for every audio source.
+fn source_direct_params(quality: &SteamAudioQuality) -> audionimbus::DirectSimulationParameters {
+    audionimbus::DirectSimulationParameters::new()
+        .with_distance_attenuation(audionimbus::DistanceAttenuationModel::Default)
+        .with_air_absorption(audionimbus::AirAbsorptionModel::Default)
+        .with_directivity(audionimbus::Directivity::WeightedDipole {
+            // TODO: synchronize with the encoder node
+            weight: 0.0,
+            power: 0.0,
+        })
+        .with_occlusion(
+            audionimbus::Occlusion::new(audionimbus::OcclusionAlgorithm::Volumetric {
+                radius: 0.3,
+                num_occlusion_samples: quality.direct.max_num_occlusion_samples,
+            })
+            .with_transmission(audionimbus::TransmissionParameters {
+                num_transmission_rays: 16,
+            }),
+        )
+}
+
+/// Builds the pathing parameters for a source, borrowing `probe_batch` for the call duration.
+fn source_pathing_params<'a>(
+    probe_batch: &'a audionimbus::ProbeBatch,
+    pathing_settings: &SteamAudioPathBakingSettings,
+    quality: &SteamAudioQuality,
+) -> audionimbus::PathingSimulationParameters<'a> {
+    audionimbus::PathingSimulationParameters {
+        pathing_probes: probe_batch,
+        visibility_radius: pathing_settings.visibility_radius,
+        visibility_threshold: pathing_settings.visibility_threshold,
+        visibility_range: pathing_settings.visibility_range,
+        pathing_order: quality.order,
+        enable_validation: true,
+        find_alternate_paths: true,
+        deviation: audionimbus::DeviationModel::Default,
+    }
+}
+
 /// Inspired by the Unity Steam Audio plugin.
 fn update_simulation(
-    mut simulator: ResMut<AudionimbusSimulator>,
+    simulator: ResMut<AudionimbusSimulator>,
     quality: Res<SteamAudioQuality>,
     mut enabled: ResMut<SteamAudioEnabled>,
     listener: Single<&GlobalTransform, With<SteamAudioListener>>,
@@ -250,7 +289,6 @@ fn update_simulation(
     mut nodes: Query<(&mut AudionimbusSource, &GlobalTransform, &SampleEffects)>,
     mut steam_audio_nodes: Query<&mut SteamAudioNode>,
     mut reverb_node: Single<&mut SteamAudioReverbNode, Without<EffectOf>>,
-
     pathing_settings: Res<SteamAudioPathBakingSettings>,
     probes: Option<Res<SteamAudioProbeBatch>>,
     time: Res<Time>,
@@ -261,85 +299,50 @@ fn update_simulation(
     }
     errors.clear();
     let listener_transform = listener.compute_transform();
-    let listener_orientation = listener_transform.into();
+    let listener_orientation: AudionimbusCoordinateSystem = listener_transform.into();
     let shared_inputs = quality.to_audionimbus_simulation_shared_inputs(listener_orientation);
 
+    let simulator_arc = simulator.simulator.clone();
+    let pathing_available = probes.is_some();
+    let probe_batch_ref: &audionimbus::ProbeBatch = match probes.as_ref() {
+        Some(p) => &p.0,
+        None => &simulator.fallback_probe_batch,
+    };
+
     if synchro.complete.load(Ordering::SeqCst) {
-        root.commit();
+        root.0.commit();
         // This should never fail unless there's a bug, as this branch should only be called when the reflection thread is idle.
-        simulator
-            .get()
+        simulator_arc
             .try_write()
             .map_err(|e| format!("Failed to commit simulator even though it should be idle: {e}"))?
             .commit();
     }
 
-    let listener_inputs = audionimbus::SimulationInputs {
-        source: listener_orientation.into(),
-        direct_simulation: None,
-        reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
-            baked_data_identifier: None,
-        }),
-        pathing_simulation: probes.as_ref().map(|probes| {
-            audionimbus::PathingSimulationParameters {
-                pathing_probes: probes,
-                visibility_radius: pathing_settings.visibility_radius,
-                visibility_threshold: pathing_settings.visibility_threshold,
-                visibility_range: pathing_settings.visibility_range,
-                pathing_order: quality.order,
-                enable_validation: true,
-                find_alternate_paths: true,
-                deviation: audionimbus::DeviationModel::Default,
-            }
-        }),
-    };
-    // TODO: make this configurable
-    let source_inputs = |orientation: AudionimbusCoordinateSystem| audionimbus::SimulationInputs {
-        source: orientation.into(),
-        direct_simulation: Some(audionimbus::DirectSimulationParameters {
-            distance_attenuation: Some(audionimbus::DistanceAttenuationModel::Default),
-            air_absorption: Some(audionimbus::AirAbsorptionModel::Default),
-            directivity: Some(audionimbus::Directivity::WeightedDipole {
-                // TODO: make sure this is synchronized with the encoder. Right now they both happen to hardcode the same values.
-                weight: 0.0,
-                power: 0.0,
-            }),
-            occlusion: Some(audionimbus::Occlusion {
-                transmission: Some(audionimbus::TransmissionParameters {
-                    num_transmission_rays: 16,
-                }),
-                algorithm: audionimbus::OcclusionAlgorithm::Volumetric {
-                    radius: 0.3,
-                    num_occlusion_samples: quality.direct.max_num_occlusion_samples,
-                },
-            }),
-        }),
-        reflections_simulation: Some(audionimbus::ReflectionsSimulationParameters::Convolution {
-            baked_data_identifier: None,
-        }),
-        pathing_simulation: probes.as_ref().map(|probes| {
-            audionimbus::PathingSimulationParameters {
-                pathing_probes: probes,
-                visibility_radius: pathing_settings.visibility_radius,
-                visibility_threshold: pathing_settings.visibility_threshold,
-                visibility_range: pathing_settings.visibility_range,
-                pathing_order: quality.order,
-                enable_validation: true,
-                find_alternate_paths: true,
-                deviation: audionimbus::DeviationModel::Default,
-            }
-        }),
+    let reflections_params = audionimbus::ReflectionsSimulationParameters::Convolution {
+        baked_data_identifier: None,
     };
 
-    // set inputs
+    // Per-source inputs
+
     for (mut source, transform, effects) in nodes.iter_mut() {
-        let transform = transform.compute_transform();
-        let orientation = transform.into();
+        let orientation: AudionimbusCoordinateSystem = transform.compute_transform().into();
 
-        source.set_inputs(
-            audionimbus::SimulationFlags::DIRECT,
-            source_inputs(orientation),
-        );
+        let inputs = audionimbus::SimulationInputs::new(orientation.into())
+            .with_direct(source_direct_params(&quality))
+            .with_reflections(reflections_params)
+            .with_pathing(source_pathing_params(
+                probe_batch_ref,
+                &pathing_settings,
+                &quality,
+            ));
+
+        if let Err(e) = source
+            .0
+            .set_inputs(audionimbus::SimulationFlags::DIRECT, inputs)
+        {
+            errors.push(format!("Failed to set source direct inputs: {e}"));
+            continue;
+        }
 
         let mut node = match steam_audio_nodes.get_effect_mut(effects) {
             Ok(node) => node,
@@ -352,17 +355,37 @@ fn update_simulation(
         node.listener_position = listener_orientation;
     }
 
-    listener_source.set_inputs(audionimbus::SimulationFlags::DIRECT, listener_inputs);
+    {
+        let inputs = audionimbus::SimulationInputs::new(listener_orientation.into())
+            .with_direct(source_direct_params(&quality))
+            .with_reflections(reflections_params)
+            .with_pathing(source_pathing_params(
+                probe_batch_ref,
+                &pathing_settings,
+                &quality,
+            ));
+
+        if let Err(e) = listener_source.0.set_inputs(
+            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+            inputs,
+        ) {
+            errors.push(format!("Failed to set listener source inputs: {e}"));
+        }
+    }
+
     reverb_node.listener_position = listener_orientation;
 
-    let simulator = simulator
-        .get()
+    let simulator_read = simulator_arc
         .try_read()
         .map_err(|e| format!("Failed to run simulator even though it should be idle: {e}"))?;
 
-    simulator.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs);
+    if let Err(e) =
+        simulator_read.set_shared_inputs(audionimbus::SimulationFlags::DIRECT, &shared_inputs)
+    {
+        errors.push(format!("Failed to set shared direct inputs: {e}"));
+    }
 
-    simulator.run_direct();
+    simulator_read.run_direct();
 
     let Some(timer) = enabled.reflection_and_pathing_simulation_timer.as_mut() else {
         // User doesn't want any reflection or pathing simulation
@@ -390,24 +413,57 @@ fn update_simulation(
     // The previous simulation is complete, so we can start the next one
 
     // set new inputs
-    simulator.set_shared_inputs(
+    if let Err(e) = simulator_read.set_shared_inputs(
         audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
         &shared_inputs,
-    );
+    ) {
+        errors.push(format!(
+            "Failed to set shared reflections/pathing inputs: {e}"
+        ));
+    }
 
-    listener_source.set_inputs(
-        audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-        listener_inputs,
-    );
+    {
+        let inputs = audionimbus::SimulationInputs::new(listener_orientation.into())
+            .with_direct(source_direct_params(&quality))
+            .with_reflections(reflections_params)
+            .with_pathing(source_pathing_params(
+                probe_batch_ref,
+                &pathing_settings,
+                &quality,
+            ));
+
+        if let Err(e) = listener_source.0.set_inputs(
+            audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
+            inputs,
+        ) {
+            errors.push(format!(
+                "Failed to set listener reflections/pathing inputs: {e}"
+            ));
+        }
+    }
 
     for (mut source, transform, effects) in nodes.iter_mut() {
-        let transform = transform.compute_transform();
-        let orientation = transform.into();
+        let orientation: AudionimbusCoordinateSystem = transform.compute_transform().into();
 
-        source.set_inputs(
+        let inputs = audionimbus::SimulationInputs::new(orientation.into())
+            .with_direct(source_direct_params(&quality))
+            .with_reflections(reflections_params)
+            .with_pathing(source_pathing_params(
+                probe_batch_ref,
+                &pathing_settings,
+                &quality,
+            ));
+
+        if let Err(e) = source.0.set_inputs(
             audionimbus::SimulationFlags::REFLECTIONS | audionimbus::SimulationFlags::PATHING,
-            source_inputs(orientation),
-        );
+            inputs,
+        ) {
+            errors.push(format!(
+                "Failed to set source reflections/pathing inputs: {e}"
+            ));
+            continue;
+        }
+
         let mut node = match steam_audio_nodes.get_effect_mut(effects) {
             Ok(node) => node,
             Err(err) => {
@@ -415,7 +471,7 @@ fn update_simulation(
                 continue;
             }
         };
-        node.pathing_available = probes.is_some();
+        node.pathing_available = pathing_available;
     }
 
     synchro.complete.store(false, Ordering::SeqCst);

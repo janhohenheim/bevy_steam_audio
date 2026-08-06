@@ -3,10 +3,11 @@ use crate::{
     nodes::{FixedProcessBlock, apply_volume_ramp},
     prelude::*,
     settings::SteamAudioQuality,
+    sources::AudioSourceInner,
     wrapper::{AudionimbusCoordinateSystem, ChannelPtrs, ToSteamAudioVec3 as _},
 };
 
-use audionimbus::AudioBuffer;
+use audionimbus::{AudioBuffer, effect::reflections::Convolution};
 use bevy_ecs::{entity_disabling::Disabled, lifecycle::HookContext, world::DeferredWorld};
 use bevy_seedling::{
     firewheel::diff::{Diff, Patch},
@@ -28,13 +29,13 @@ pub(super) fn plugin(app: &mut App) {
     app.register_node::<SteamAudioNode>();
     app.add_observer(init_steam_audio_node);
 }
+
 #[derive(Diff, Patch, Debug, PartialEq, Clone, RealtimeClone, Component, Reflect)]
 #[reflect(Component)]
 pub struct SteamAudioNode {
     pub direct_gain: f32,
     pub reflection_gain: f32,
     pub pathing_gain: f32,
-
     pub previous_direct_gain: f32,
     pub previous_reflection_gain: f32,
     pub previous_pathing_gain: f32,
@@ -127,17 +128,16 @@ impl AudioNode for SteamAudioNode {
         let hrtf = config.hrtf.clone().expect("Created an `AudioNode` before the audio stream was ready. Please wait until `SteamAudioReady` is triggered.");
         SteamAudioProcessor {
             params: self.clone(),
-
             direct_effect: audionimbus::DirectEffect::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
                 &audionimbus::DirectEffectSettings { num_channels: 2 },
             )
             .unwrap(),
-            reflection_effect: audionimbus::ReflectionEffect::try_new(
+            reflection_effect: audionimbus::ReflectionEffect::<Convolution>::try_new(
                 &STEAM_AUDIO_CONTEXT,
                 &settings,
-                &audionimbus::ReflectionEffectSettings::Convolution {
+                &audionimbus::ReflectionEffectSettings {
                     impulse_response_size: config
                         .quality
                         .impulse_response_size(settings.sampling_rate),
@@ -170,6 +170,7 @@ impl AudioNode for SteamAudioNode {
                     max_order: config.quality.order,
                     speaker_layout: audionimbus::SpeakerLayout::Stereo,
                     hrtf: &hrtf,
+                    rendering: audionimbus::Rendering::Binaural,
                 },
             )
             .unwrap(),
@@ -196,12 +197,12 @@ struct SteamAudioProcessor {
     quality: SteamAudioQuality,
     params: SteamAudioNode,
     direct_effect: audionimbus::DirectEffect,
-    reflection_effect: audionimbus::ReflectionEffect,
+    reflection_effect: audionimbus::ReflectionEffect<Convolution>,
     binaural_effect: audionimbus::BinauralEffect,
     pathing_effect: audionimbus::PathEffect,
     ambisonics_decode_effect: audionimbus::AmbisonicsDecodeEffect,
     fixed_block: FixedProcessBlock,
-    source: Option<audionimbus::Source>,
+    source: Option<AudioSourceInner>,
     // We might be able to use the scratch buffers for this, but
     // the ambisonic order may produce more channels than scratch
     // buffers.
@@ -303,7 +304,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 )
                 .unwrap()
             };
-            mono_reflect_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
+            mono_reflect_sa_buffer
+                .downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer)
+                .unwrap();
 
             assert!(scratch_mono_pathing.len() >= frame_size);
             let mut channel_ptrs = [scratch_mono_pathing.as_mut_ptr()];
@@ -317,7 +320,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 )
                 .unwrap()
             };
-            mono_pathing_sa_buffer.downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer);
+            mono_pathing_sa_buffer
+                .downmix(&STEAM_AUDIO_CONTEXT, &input_sa_buffer)
+                .unwrap();
 
             assert!(scratch_stereo_left.len() >= frame_size);
             assert!(scratch_stereo_right.len() >= frame_size);
@@ -342,6 +347,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
 
             let mut direct_effect_params = source
                 .get_outputs(audionimbus::SimulationFlags::DIRECT)
+                .unwrap()
                 .direct()
                 .into_inner();
             direct_effect_params.directivity = Some(audionimbus::directivity_attenuation(
@@ -360,12 +366,17 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 listener.origin.to_steam_audio_vec3(),
                 &audionimbus::DistanceAttenuationModel::Default,
             ));
-            direct_effect_params.air_absorption = Some(audionimbus::air_absorption(
-                &STEAM_AUDIO_CONTEXT,
-                &source_position.origin.to_steam_audio_vec3(),
-                &listener.origin.to_steam_audio_vec3(),
-                &audionimbus::AirAbsorptionModel::Default,
-            ));
+            direct_effect_params.air_absorption = Some(
+                // SAFETY: This is safe because we're not using a callback.
+                unsafe {
+                    audionimbus::air_absorption(
+                        &STEAM_AUDIO_CONTEXT,
+                        source_position.origin.to_steam_audio_vec3(),
+                        listener.origin.to_steam_audio_vec3(),
+                        &audionimbus::AirAbsorptionModel::Default,
+                    )
+                },
+            );
 
             let _effect_state = self.direct_effect.apply(
                 &direct_effect_params,
@@ -415,35 +426,41 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             )
             .unwrap();
 
-            let mut reflection_effect_params = source
-                .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
-                .reflections()
-                .into_inner();
-            reflection_effect_params.reflection_effect_type = self.quality.reflections.kind.into();
-            reflection_effect_params.num_channels = self.quality.num_channels();
-            reflection_effect_params.impulse_response_size = self
-                .quality
-                .impulse_response_size(proc_info.sample_rate.into());
+            {
+                let outputs = source
+                    .get_outputs(audionimbus::SimulationFlags::REFLECTIONS)
+                    .unwrap();
+                let mut reflection_effect_params =
+                    outputs.reflections::<Convolution>().into_inner();
+                reflection_effect_params
+                    .set_num_channels(self.quality.num_channels())
+                    .unwrap();
+                reflection_effect_params
+                    .set_impulse_response_size(
+                        self.quality
+                            .impulse_response_size(proc_info.sample_rate.into()),
+                    )
+                    .unwrap();
 
-            apply_volume_ramp(
-                self.params.previous_reflection_gain,
-                self.params.reflection_gain,
-                &mut [scratch_mono_reflect],
-            );
-            self.params.previous_reflection_gain = self.params.reflection_gain;
+                apply_volume_ramp(
+                    self.params.previous_reflection_gain,
+                    self.params.reflection_gain,
+                    &mut [scratch_mono_reflect],
+                );
+                self.params.previous_reflection_gain = self.params.reflection_gain;
 
-            let _effect_state = self.reflection_effect.apply(
-                &reflection_effect_params,
-                &mono_reflect_sa_buffer,
-                &ambisonics_sa_buffer,
-            );
+                let _effect_state = self.reflection_effect.apply(
+                    &reflection_effect_params,
+                    &mono_reflect_sa_buffer,
+                    &ambisonics_sa_buffer,
+                );
+            }
 
             // Decode ambisonics
             let ambisonics_decode_effect_params = audionimbus::AmbisonicsDecodeEffectParams {
                 order: self.quality.order,
                 hrtf: &self.hrtf,
                 orientation: listener.into(),
-                binaural: true,
             };
             let _effect_state = self.ambisonics_decode_effect.apply(
                 &ambisonics_decode_effect_params,
@@ -451,17 +468,19 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 &scratch_stereo_sa_buffer,
             );
 
-            output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer);
+            output_sa_buffer
+                .mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer)
+                .unwrap();
 
             // Pathing effect
             if self.params.pathing_available {
                 let mut pathing_effect_params = source
                     .get_outputs(audionimbus::SimulationFlags::PATHING)
+                    .unwrap()
                     .pathing()
                     .into_inner();
                 pathing_effect_params.order = self.quality.order;
                 pathing_effect_params.listener = listener.into();
-                pathing_effect_params.binaural = true;
                 pathing_effect_params.hrtf = self.hrtf.clone();
 
                 apply_volume_ramp(
@@ -475,8 +494,9 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                     &mono_pathing_sa_buffer,
                     &scratch_stereo_sa_buffer,
                 );
-
-                output_sa_buffer.mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer);
+                output_sa_buffer
+                    .mix(&STEAM_AUDIO_CONTEXT, &scratch_stereo_sa_buffer)
+                    .unwrap();
             }
         });
 
@@ -513,10 +533,10 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &audionimbus::DirectEffectSettings { num_channels: 2 },
         )
         .unwrap();
-        self.reflection_effect = audionimbus::ReflectionEffect::try_new(
+        self.reflection_effect = audionimbus::ReflectionEffect::<Convolution>::try_new(
             &STEAM_AUDIO_CONTEXT,
             &settings,
-            &audionimbus::ReflectionEffectSettings::Convolution {
+            &audionimbus::ReflectionEffectSettings {
                 impulse_response_size: self.quality.impulse_response_size(settings.sampling_rate),
                 num_channels: self.quality.num_channels(),
             },
@@ -540,7 +560,6 @@ impl AudioNodeProcessor for SteamAudioProcessor {
             &audionimbus::BinauralEffectSettings { hrtf: &self.hrtf },
         )
         .unwrap();
-
         self.ambisonics_decode_effect = audionimbus::AmbisonicsDecodeEffect::try_new(
             &STEAM_AUDIO_CONTEXT,
             &settings,
@@ -548,6 +567,7 @@ impl AudioNodeProcessor for SteamAudioProcessor {
                 max_order: self.quality.order,
                 speaker_layout: audionimbus::SpeakerLayout::Stereo,
                 hrtf: &self.hrtf,
+                rendering: audionimbus::Rendering::Binaural,
             },
         )
         .unwrap();

@@ -158,15 +158,12 @@ fn handle_scene(
                         continue;
                     }
                 };
-                root.add_static_mesh(audio_mesh.clone());
+                let handle = root.0.add_static_mesh(audio_mesh);
                 commands
                     .entity(*entity)
-                    .try_insert((SteamAudioStaticMesh(audio_mesh), material));
+                    .try_insert((SteamAudioStaticMesh(handle), material));
             } else {
-                let mut sub_scene = match audionimbus::Scene::try_new(
-                    &STEAM_AUDIO_CONTEXT,
-                    &audionimbus::SceneSettings::Default,
-                ) {
+                let mut sub_scene = match audionimbus::Scene::try_new(&STEAM_AUDIO_CONTEXT) {
                     Ok(sub_scene) => sub_scene,
                     Err(err) => {
                         errors.push(format!(
@@ -190,12 +187,12 @@ fn handle_scene(
                 let transform = transform.to_steam_audio_transform();
 
                 let instanced_mesh_settings = audionimbus::InstancedMeshSettings {
-                    sub_scene: sub_scene.clone(),
+                    sub_scene: &sub_scene,
                     transform,
                 };
                 let instanced_mesh = match audionimbus::InstancedMesh::try_new(
                     &root,
-                    instanced_mesh_settings,
+                    &instanced_mesh_settings,
                 ) {
                     Ok(instanced_mesh) => instanced_mesh,
                     Err(err) => {
@@ -203,10 +200,10 @@ fn handle_scene(
                         continue;
                     }
                 };
-                root.add_instanced_mesh(instanced_mesh.clone());
+                let handle = root.0.add_instanced_mesh(instanced_mesh);
                 commands
                     .entity(*entity)
-                    .try_insert((SteamAudioInstancedMesh(instanced_mesh), material));
+                    .try_insert((SteamAudioInstancedMesh(handle), material));
             }
 
             #[cfg(feature = "debug")]

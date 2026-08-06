@@ -42,7 +42,9 @@ impl Plugin for Mesh3dSteamAudioScenePlugin {
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct MeshToScene(HashMap<AssetId<Mesh>, audionimbus::Scene>);
+struct MeshToScene(
+    HashMap<AssetId<Mesh>, audionimbus::Scene<'static, audionimbus::DefaultRayTracer>>,
+);
 
 fn queue_steam_audio_mesh_processing(
     meshes: Query<(Entity, Ref<Mesh3d>), With<SteamAudioMaterial>>,
@@ -84,13 +86,10 @@ fn spawn_new_steam_audio_meshes(
         };
 
         if !is_static {
-            let sub_scene = if let Some(sub_scene) = map.get(&id) {
+            let sub_scene = if let Some(sub_scene) = map.0.get(&id) {
                 sub_scene.clone()
             } else {
-                let mut sub_scene = match audionimbus::Scene::try_new(
-                    &STEAM_AUDIO_CONTEXT,
-                    &audionimbus::SceneSettings::default(),
-                ) {
+                let mut sub_scene = match audionimbus::Scene::try_new(&STEAM_AUDIO_CONTEXT) {
                     Ok(sub_scene) => sub_scene,
                     Err(err) => {
                         errors.push(format!(
@@ -115,17 +114,16 @@ fn spawn_new_steam_audio_meshes(
                 sub_scene.add_static_mesh(static_mesh);
                 // committing a new scene should be fine during simulation of a different scene
                 sub_scene.commit();
-                map.insert(id, sub_scene.clone());
+                map.0.insert(id, sub_scene.clone());
                 sub_scene
             };
-            let transform = transform.to_steam_audio_transform();
 
             let instanced_mesh_settings = audionimbus::InstancedMeshSettings {
-                sub_scene: sub_scene.clone(),
-                transform,
+                sub_scene: &sub_scene,
+                transform: transform.to_steam_audio_transform(),
             };
             let instanced_mesh =
-                match audionimbus::InstancedMesh::try_new(&root, instanced_mesh_settings) {
+                match audionimbus::InstancedMesh::try_new(&root.0, &instanced_mesh_settings) {
                     Ok(instanced_mesh) => instanced_mesh,
                     Err(err) => {
                         errors.push(format!("{name}: Failed to create instanced mesh: {err}"));
@@ -135,13 +133,13 @@ fn spawn_new_steam_audio_meshes(
                         continue;
                     }
                 };
-            root.add_instanced_mesh(instanced_mesh.clone());
+            let handle = root.0.add_instanced_mesh(instanced_mesh);
             commands
                 .entity(entity)
-                .try_insert(SteamAudioInstancedMesh(instanced_mesh));
+                .try_insert(SteamAudioInstancedMesh(handle));
         } else {
             let mesh = mesh.clone().transformed_by(transform.compute_transform());
-            let static_mesh = match mesh.to_steam_audio_mesh(&root, (*material).into()) {
+            let static_mesh = match mesh.to_steam_audio_mesh(&root.0, (*material).into()) {
                 Ok(mesh) => mesh,
                 Err(err) => {
                     errors.push(format!("{name}: Failed to convert mesh: {err}"));
@@ -151,10 +149,10 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            root.add_static_mesh(static_mesh.clone());
+            let handle = root.0.add_static_mesh(static_mesh);
             commands
                 .entity(entity)
-                .try_insert(SteamAudioStaticMesh(static_mesh));
+                .try_insert(SteamAudioStaticMesh(handle));
         }
 
         commands
@@ -170,12 +168,9 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-
             commands.entity(entity).try_insert(gizmo);
         }
     }
-    // Do not call root.commit(), it's not safe while simulations are running
-
     if !errors.is_empty() {
         Err(errors.join("\n").into())
     } else {
@@ -189,7 +184,7 @@ fn garbage_collect_meshes(
 ) {
     for event in asset_events.read() {
         if let AssetEvent::Removed { id } | AssetEvent::Modified { id } = event {
-            map.remove(id);
+            map.0.remove(id);
         }
     }
 }

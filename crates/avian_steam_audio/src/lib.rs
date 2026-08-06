@@ -120,7 +120,9 @@ fn add_collider(
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct ShapeToScene(HashMap<ColliderKey, audionimbus::Scene>);
+struct ShapeToScene(
+    HashMap<ColliderKey, audionimbus::Scene<'static, audionimbus::DefaultRayTracer>>,
+);
 
 #[derive(Deref, DerefMut)]
 struct ColliderKey(Weak<dyn Shape>);
@@ -186,10 +188,7 @@ fn spawn_new_steam_audio_meshes(
             let sub_scene = if let Some(sub_scene) = map.get(&ColliderKey::from(collider)) {
                 sub_scene.clone()
             } else {
-                let mut sub_scene = match audionimbus::Scene::try_new(
-                    &STEAM_AUDIO_CONTEXT,
-                    &audionimbus::SceneSettings::default(),
-                ) {
+                let mut sub_scene = match audionimbus::Scene::try_new(&STEAM_AUDIO_CONTEXT) {
                     Ok(sub_scene) => sub_scene,
                     Err(err) => {
                         errors.push(format!(
@@ -230,11 +229,11 @@ fn spawn_new_steam_audio_meshes(
             let transform = transform.to_steam_audio_transform();
 
             let instanced_mesh_settings = audionimbus::InstancedMeshSettings {
-                sub_scene: sub_scene.clone(),
+                sub_scene: &sub_scene,
                 transform,
             };
             let instanced_mesh =
-                match audionimbus::InstancedMesh::try_new(&root, instanced_mesh_settings) {
+                match audionimbus::InstancedMesh::try_new(&root, &instanced_mesh_settings) {
                     Ok(instanced_mesh) => instanced_mesh,
                     Err(err) => {
                         errors.push(format!("{name}: Failed to create instanced mesh: {err}"));
@@ -244,10 +243,10 @@ fn spawn_new_steam_audio_meshes(
                         continue;
                     }
                 };
-            root.add_instanced_mesh(instanced_mesh.clone());
+            let handle = root.add_instanced_mesh(instanced_mesh);
             commands
                 .entity(entity)
-                .try_insert(SteamAudioInstancedMesh(instanced_mesh));
+                .try_insert(SteamAudioInstancedMesh(handle));
         } else {
             let mesh = match collider
                 .trimesh_builder()
@@ -274,10 +273,10 @@ fn spawn_new_steam_audio_meshes(
                     continue;
                 }
             };
-            root.add_static_mesh(static_mesh.clone());
+            let handle = root.add_static_mesh(static_mesh);
             commands
                 .entity(entity)
-                .try_insert(SteamAudioStaticMesh(static_mesh));
+                .try_insert(SteamAudioStaticMesh(handle));
         }
 
         commands
@@ -317,9 +316,9 @@ fn garbage_collect_meshes(mut map: ResMut<ShapeToScene>) {
 pub trait ToSteamAudioMesh {
     fn to_steam_audio_mesh(
         &self,
-        scene: &audionimbus::Scene,
+        scene: &audionimbus::Scene<'static, audionimbus::DefaultRayTracer>,
         material: audionimbus::Material,
-    ) -> Result<audionimbus::StaticMesh>;
+    ) -> Result<audionimbus::StaticMesh<audionimbus::DefaultRayTracer>>;
 }
 
 impl ToSteamAudioMesh for Trimesh {
@@ -327,7 +326,7 @@ impl ToSteamAudioMesh for Trimesh {
         &self,
         scene: &audionimbus::Scene,
         material: audionimbus::Material,
-    ) -> Result<audionimbus::StaticMesh> {
+    ) -> Result<audionimbus::StaticMesh<audionimbus::DefaultRayTracer>> {
         let vertices = self
             .vertices
             .iter()

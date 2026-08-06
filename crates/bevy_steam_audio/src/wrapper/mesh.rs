@@ -10,17 +10,17 @@ pub(super) fn plugin(app: &mut App) {
 pub trait ToSteamAudioMesh {
     fn to_steam_audio_mesh(
         &self,
-        scene: &audionimbus::Scene,
+        scene: &audionimbus::Scene<'static, audionimbus::DefaultRayTracer>,
         material: audionimbus::Material,
-    ) -> Result<audionimbus::StaticMesh>;
+    ) -> Result<audionimbus::StaticMesh<audionimbus::DefaultRayTracer>>;
 }
 
 impl ToSteamAudioMesh for Mesh {
     fn to_steam_audio_mesh(
         &self,
-        scene: &audionimbus::Scene,
+        scene: &audionimbus::Scene<'static, audionimbus::DefaultRayTracer>,
         material: audionimbus::Material,
-    ) -> Result<audionimbus::StaticMesh> {
+    ) -> Result<audionimbus::StaticMesh<audionimbus::DefaultRayTracer>> {
         if self.primitive_topology() != PrimitiveTopology::TriangleList {
             return Err("Mesh is not a triangle list".into());
         }

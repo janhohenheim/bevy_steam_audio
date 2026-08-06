@@ -83,7 +83,7 @@ fn generate_probes(
         transform,
     };
     let mut array = audionimbus::ProbeArray::try_new(&STEAM_AUDIO_CONTEXT)?;
-    array.generate_probes(&root, &params);
+    array.generate_probes(&root.0, &params);
     if array.num_probes() == 0 {
         error!("Failed to generate any probes. Is the scene empty?");
         return Ok(());
@@ -95,15 +95,14 @@ fn generate_probes(
     batch.commit();
 
     if let Some(old_batch) = probe_batch.as_ref() {
-        simulator.remove_probe_batch(old_batch);
+        simulator.remove_probe_batch(&old_batch.0);
     }
     simulator.add_probe_batch(&batch);
     simulator.commit();
 
+    let baker = audionimbus::PathBaker::<audionimbus::DefaultRayTracer>::new();
     let bake_params = audionimbus::PathBakeParams {
-        scene: &root,
-        probe_batch: &batch,
-        identifier: &audionimbus::BakedDataIdentifier::Pathing {
+        identifier: audionimbus::BakedDataIdentifier::Pathing {
             variation: audionimbus::BakedDataVariation::Dynamic,
         },
         num_samples: quality.pathing.num_visibility_samples,
@@ -113,20 +112,19 @@ fn generate_probes(
         visibility_range: pathing_settings.visibility_range,
         num_threads: 4,
     };
-    audionimbus::bake_path(
+
+    if let Err(e) = baker.bake_with_progress_callback(
         &STEAM_AUDIO_CONTEXT,
-        &bake_params,
-        Some(audionimbus::CallbackInformation {
-            callback: progress_callback,
-            user_data: std::ptr::null_mut(),
+        &mut batch,
+        &root.0,
+        bake_params,
+        audionimbus::ProgressCallback::new(|progress| {
+            debug!("Pathing bake progress: {:.2}%", progress * 100.0);
         }),
-    );
+    ) {
+        error!("Path bake failed: {e:?}");
+    }
 
     commands.insert_resource(SteamAudioProbeBatch(batch));
-
     Ok(())
-}
-
-unsafe extern "C" fn progress_callback(progress: f32, _user_data: *mut std::ffi::c_void) {
-    debug!("Pathing progress: {:.2}%", progress * 100.0);
 }
